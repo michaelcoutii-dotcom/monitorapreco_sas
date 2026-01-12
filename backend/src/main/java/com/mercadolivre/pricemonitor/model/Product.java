@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Entity representing a monitored product from Mercado Livre.
@@ -14,9 +16,11 @@ import java.time.LocalDateTime;
  * - id: Unique identifier
  * - name: Product title (extracted from scraping)
  * - url: Mercado Livre product URL
+ * - imageUrl: Product image URL
  * - currentPrice: Latest scraped price
  * - lastPrice: Previous price (before last update)
  * - lastCheckedAt: Timestamp of last successful price check
+ * - priceHistory: Historical prices for graphing
  */
 @Entity
 @Table(name = "products")
@@ -35,6 +39,9 @@ public class Product {
     @Column(nullable = false, length = 2048)
     private String url;
 
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
+
     @Column(name = "current_price")
     private Double currentPrice;
 
@@ -46,6 +53,9 @@ public class Product {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PriceHistory> priceHistory = new ArrayList<>();
 
     /**
      * Set creation timestamp before persisting.

@@ -13,4 +13,5 @@ import lombok.NoArgsConstructor;
 public class ScrapeResponse {
     private String title;
     private Double price;
+    private String imageUrl;
 }

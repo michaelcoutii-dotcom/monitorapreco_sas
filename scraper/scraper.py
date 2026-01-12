@@ -93,6 +93,16 @@ def scrape_mercadolivre(url: str) -> dict | None:
         
         title = title_element.inner_text().strip() if title_element else None
         
+        # Extract product image
+        image_url = None
+        image_element = page.query_selector("figure.ui-pdp-gallery__figure img")
+        if not image_element:
+            image_element = page.query_selector(".ui-pdp-image img")
+        if not image_element:
+            image_element = page.query_selector("img[data-zoom]")
+        if image_element:
+            image_url = image_element.get_attribute("src") or image_element.get_attribute("data-src")
+        
         # Extract product price
         # Selector: Price container with fraction part
         # Mercado Livre splits price into integer and cents
@@ -115,7 +125,8 @@ def scrape_mercadolivre(url: str) -> dict | None:
         
         return {
             "title": title,
-            "price": price
+            "price": price,
+            "imageUrl": image_url
         }
         
     except PlaywrightTimeout:

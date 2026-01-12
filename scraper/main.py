@@ -40,13 +40,15 @@ class ScrapeResponse(BaseModel):
     """Response model for successful scraping."""
     title: str
     price: float
+    imageUrl: Optional[str] = None
     
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "title": "Cadeira Escritório Ergonômica",
-                    "price": 3700.63
+                    "price": 3700.63,
+                    "imageUrl": "https://http2.mlstatic.com/D_NQ_NP_example.webp"
                 }
             ]
         }
@@ -121,7 +123,8 @@ def scrape_product(request: ScrapeRequest):
     
     return ScrapeResponse(
         title=result["title"],
-        price=result["price"]
+        price=result["price"],
+        imageUrl=result.get("imageUrl")
     )
 
 

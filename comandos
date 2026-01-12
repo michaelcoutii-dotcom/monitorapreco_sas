@@ -1,0 +1,5 @@
+ C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe main.py == python 
+
+ java -jar target/price-monitor-1.0.0.jar == java
+
+ npm run dev == react

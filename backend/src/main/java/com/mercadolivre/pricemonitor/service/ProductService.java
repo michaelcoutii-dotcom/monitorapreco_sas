@@ -2,7 +2,9 @@ package com.mercadolivre.pricemonitor.service;
 
 import com.mercadolivre.pricemonitor.dto.ScrapeResponse;
 import com.mercadolivre.pricemonitor.model.Product;
+import com.mercadolivre.pricemonitor.model.PriceHistory;
 import com.mercadolivre.pricemonitor.repository.ProductRepository;
+import com.mercadolivre.pricemonitor.repository.PriceHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import java.util.Optional;
  * - Update product prices from scraper
  * - Detect price drops
  * - Log price changes with full context
+ * - Maintain price history
  */
 @Service
 @Slf4j
@@ -27,6 +30,7 @@ import java.util.Optional;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final PriceHistoryRepository priceHistoryRepository;
     private final ScraperService scraperService;
     private final EmailService emailService;
 
@@ -45,6 +49,17 @@ public class ProductService {
      */
     public Optional<Product> getProductById(Long id) {
         return productRepository.findById(id);
+    }
+
+    /**
+     * Get price history for a product.
+     */
+    public List<PriceHistory> getPriceHistory(Long productId) {
+        Optional<Product> product = productRepository.findById(productId);
+        if (product.isEmpty()) {
+            return List.of();
+        }
+        return priceHistoryRepository.findTop30ByProductOrderByRecordedAtDesc(product.get());
     }
 
     /**
@@ -71,11 +86,17 @@ public class ProductService {
         Product product = new Product();
         product.setName(scrapeData.getTitle());
         product.setUrl(url);
+        product.setImageUrl(scrapeData.getImageUrl());
         product.setCurrentPrice(scrapeData.getPrice());
         product.setLastPrice(null); // No previous price yet
         product.setLastCheckedAt(LocalDateTime.now());
 
         Product saved = productRepository.save(product);
+        
+        // Save initial price history
+        PriceHistory history = new PriceHistory(saved, scrapeData.getPrice());
+        priceHistoryRepository.save(history);
+        
         log.info("Added new product: '{}' at R$ {}", saved.getName(), saved.getCurrentPrice());
         
         return saved;
@@ -167,8 +188,17 @@ public class ProductService {
         // Update name in case it changed
         product.setName(scrapeData.getTitle());
         
+        // Update image URL if available
+        if (scrapeData.getImageUrl() != null) {
+            product.setImageUrl(scrapeData.getImageUrl());
+        }
+        
         // Save changes
         productRepository.save(product);
+        
+        // Save price history
+        PriceHistory history = new PriceHistory(product, newPrice);
+        priceHistoryRepository.save(history);
         
         // Log price drop with full context
         if (oldPrice != null && newPrice < oldPrice) {
