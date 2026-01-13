@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useTheme } from '../App'
 
 function AddProduct({ onAdd, adding }) {
-  const { darkMode } = useTheme()
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
 
@@ -58,18 +56,14 @@ function AddProduct({ onAdd, adding }) {
   }
 
   return (
-    <div className={`rounded-2xl shadow-lg p-6 mb-8 transition-all duration-300 ${
-      darkMode 
-        ? 'bg-gray-800 border border-gray-700' 
-        : 'bg-white border border-gray-100'
-    }`}>
+    <div className="rounded-2xl shadow-lg p-6 mb-8 transition-all duration-300 bg-white border border-gray-100">
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2 rounded-xl ${darkMode ? 'bg-green-900/30' : 'bg-green-100'}`}>
+        <div className="p-2 rounded-xl bg-green-100">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
-        <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        <h2 className="text-lg font-semibold text-gray-800">
           Adicionar Novo Produto
         </h2>
       </div>
@@ -79,9 +73,7 @@ function AddProduct({ onAdd, adding }) {
           <div className="flex-1 relative">
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
-              className={`absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 ${
-                darkMode ? 'text-gray-500' : 'text-gray-400'
-              }`}
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -95,11 +87,7 @@ function AddProduct({ onAdd, adding }) {
               onPaste={handlePaste}
               placeholder="Cole a URL do produto (ex: https://www.mercadolivre.com.br/...)"
               disabled={adding}
-              className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                darkMode 
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-green-400 focus:ring-green-400/20' 
-                  : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-500 focus:border-green-500 focus:ring-green-500/20'
-              } ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-500 focus:border-green-500 focus:ring-green-500/20"
             />
           </div>
           <button
@@ -131,18 +119,18 @@ function AddProduct({ onAdd, adding }) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className={`text-sm ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+            <p className="text-sm text-red-600">
               {error}
             </p>
           </div>
         )}
 
-        <div className={`mt-3 flex items-start gap-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        <div className="mt-3 flex items-start gap-2 text-xs text-gray-500">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>
-            ✅ Certifique-se que o Backend está rodando em <strong>http://localhost:8080</strong> e o Scraper Python em <strong>http://localhost:8000</strong>
+            ✅ Certifique-se que o Backend está rodando em <strong>http://localhost:8081</strong> e o Scraper Python em <strong>http://localhost:8000</strong>
           </span>
         </div>
       </form>

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,15 +33,18 @@ public class ProductController {
     private final PriceCheckScheduler scheduler;
 
     /**
-     * Get all monitored products.
+     * Get all monitored products for authenticated user.
      */
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
         try {
-            List<Product> products = productService.getAllProducts();
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.debug("Fetching products for userId: {}", userId);
+            
+            List<Product> products = productService.getProductsByUserId(userId);
             return ResponseEntity.ok(products);
         } catch (Exception e) {
-            log.error("Error fetching all products", e);
+            log.error("❌ Error fetching all products", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -68,6 +72,7 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<?> addProduct(@RequestBody Map<String, String> request) {
         try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
             String url = request.get("url");
             
             if (url == null || url.isBlank()) {
@@ -75,8 +80,8 @@ public class ProductController {
                         .body(Map.of("error", "URL is required"));
             }
 
-            log.info("Adding new product with URL: {}", url);
-            Product product = productService.addProduct(url);
+            log.info("➕ Adding new product for userId: {}, URL: {}", userId, url);
+            Product product = productService.addProduct(url, userId);
             
             if (product == null) {
                 log.warn("Could not scrape product from URL: {}", url);

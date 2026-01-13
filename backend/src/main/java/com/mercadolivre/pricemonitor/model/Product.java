@@ -54,6 +54,9 @@ public class Product {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PriceHistory> priceHistory = new ArrayList<>();
 

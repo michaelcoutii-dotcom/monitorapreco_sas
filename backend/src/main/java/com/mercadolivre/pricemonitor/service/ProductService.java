@@ -38,6 +38,14 @@ public class ProductService {
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
+     * Get all monitored products for a user.
+     */
+    public List<Product> getProductsByUserId(Long userId) {
+        log.debug("Fetching products for userId: {}", userId);
+        return productRepository.findByUserId(userId);
+    }
+
+    /**
      * Get all monitored products.
      */
     public List<Product> getAllProducts() {
@@ -67,18 +75,18 @@ public class ProductService {
      * Scrapes the initial price immediately.
      */
     @Transactional
-    public Product addProduct(String url) {
-        // Check if product already exists
-        if (productRepository.existsByUrl(url)) {
-            log.warn("Product with URL already exists: {}", url);
-            return productRepository.findByUrl(url).orElse(null);
+    public Product addProduct(String url, Long userId) {
+        // Check if product already exists for this user
+        if (productRepository.existsByUrlAndUserId(url, userId)) {
+            log.warn("⚠️ Product with URL already exists for userId {}: {}", userId, url);
+            return productRepository.findByUrlAndUserId(url, userId).orElse(null);
         }
 
         // Scrape initial data
         ScrapeResponse scrapeData = scraperService.fetchProductData(url);
         
         if (scrapeData == null) {
-            log.error("Could not scrape product data for URL: {}", url);
+            log.error("❌ Could not scrape product data for URL: {}", url);
             return null;
         }
 
@@ -90,6 +98,7 @@ public class ProductService {
         product.setCurrentPrice(scrapeData.getPrice());
         product.setLastPrice(null); // No previous price yet
         product.setLastCheckedAt(LocalDateTime.now());
+        product.setUserId(userId);
 
         Product saved = productRepository.save(product);
         
@@ -97,7 +106,7 @@ public class ProductService {
         PriceHistory history = new PriceHistory(saved, scrapeData.getPrice());
         priceHistoryRepository.save(history);
         
-        log.info("Added new product: '{}' at R$ {}", saved.getName(), saved.getCurrentPrice());
+        log.info("✅ Added new product for userId {}: '{}' at R$ {}", userId, saved.getName(), saved.getCurrentPrice());
         
         return saved;
     }

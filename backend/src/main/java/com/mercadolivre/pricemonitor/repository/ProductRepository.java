@@ -31,4 +31,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * Check if a product with the given URL already exists.
      */
     boolean existsByUrl(String url);
+    
+    /**
+     * Find all products for a user.
+     */
+    List<Product> findByUserId(Long userId);
+    
+    /**
+     * Find a product by URL and userId.
+     */
+    Optional<Product> findByUrlAndUserId(String url, Long userId);
+    
+    /**
+     * Check if a product exists for a user.
+     */
+    boolean existsByUrlAndUserId(String url, Long userId);
 }

@@ -2,5 +2,6 @@
 
     mvn clean package
  java -jar target/price-monitor-1.0.0.jar == java
+ cd c:/Users/Michael/Desktop/sas_mercado_livre/backend && java -jar target/price-monitor-1.0.0.jar &
 
  npm run dev == react
