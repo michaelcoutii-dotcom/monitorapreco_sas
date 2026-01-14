@@ -3,8 +3,10 @@ package com.mercadolivre.pricemonitor.service;
 import com.mercadolivre.pricemonitor.dto.ScrapeResponse;
 import com.mercadolivre.pricemonitor.model.Product;
 import com.mercadolivre.pricemonitor.model.PriceHistory;
+import com.mercadolivre.pricemonitor.model.User;
 import com.mercadolivre.pricemonitor.repository.ProductRepository;
 import com.mercadolivre.pricemonitor.repository.PriceHistoryRepository;
+import com.mercadolivre.pricemonitor.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.util.Optional;
  * - Detect price drops
  * - Log price changes with full context
  * - Maintain price history
+ * - Send email notifications on price drops
  */
 @Service
 @Slf4j
@@ -31,6 +34,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final PriceHistoryRepository priceHistoryRepository;
+    private final UserRepository userRepository;
     private final ScraperService scraperService;
     private final EmailService emailService;
 
@@ -209,12 +213,55 @@ public class ProductService {
         PriceHistory history = new PriceHistory(product, newPrice);
         priceHistoryRepository.save(history);
         
-        // Log price drop with full context
-        if (oldPrice != null && newPrice < oldPrice) {
-            logPriceDrop(product, oldPrice, newPrice);
+        // Check for price changes and send email notifications
+        try {
+            Optional<User> user = userRepository.findById(product.getUserId());
+            if (user.isPresent()) {
+                if (oldPrice != null && newPrice < oldPrice) {
+                    // Price dropped
+                    logPriceDrop(product, oldPrice, newPrice);
+                    emailService.sendPriceDropNotification(
+                        user.get().getEmail(),
+                        product.getName(),
+                        product.getUrl(),
+                        oldPrice,
+                        newPrice
+                    );
+                } else if (oldPrice != null && newPrice > oldPrice) {
+                    // Price increased
+                    logPriceIncrease(product, oldPrice, newPrice);
+                    emailService.sendPriceIncreaseNotification(
+                        user.get().getEmail(),
+                        product.getName(),
+                        product.getUrl(),
+                        oldPrice,
+                        newPrice
+                    );
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send email notification for product {}: {}", 
+                product.getName(), e.getMessage());
         }
         
         return true;
+    }
+
+    /**
+     * Log price increase with context.
+     */
+    private void logPriceIncrease(Product product, Double oldPrice, Double newPrice) {
+        double increase = newPrice - oldPrice;
+        double percentIncrease = (increase / oldPrice) * 100;
+        
+        log.info("========================================");
+        log.info("📈 PRICE INCREASED: {}", product.getName());
+        log.info("   Previous: R$ {}", String.format("%.2f", oldPrice));
+        log.info("   Current:  R$ {}", String.format("%.2f", newPrice));
+        log.info("   Increase: R$ {} (+{}%)", 
+            String.format("%.2f", increase),
+            String.format("%.1f", percentIncrease));
+        log.info("========================================");
     }
 
     /**
@@ -242,14 +289,6 @@ public class ProductService {
                 String.format("%.2f", savings),
                 String.format("%.1f", percentDrop),
                 LocalDateTime.now().format(TIMESTAMP_FORMAT));
-        
-        // Send email notification
-        emailService.sendPriceDropNotification(
-                product.getName(),
-                product.getUrl(),
-                oldPrice,
-                newPrice
-        );
     }
 
     /**

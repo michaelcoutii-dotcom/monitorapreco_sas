@@ -47,12 +47,12 @@ public class EmailService {
     }
 
     /**
-     * Send a price drop notification email.
+     * Send a price drop notification email to a specific user.
      */
-    public void sendPriceDropNotification(String productName, String productUrl, 
+    public void sendPriceDropNotification(String userEmail, String productName, String productUrl, 
                                           Double oldPrice, Double newPrice) {
-        if (!enabled || notificationEmail == null || notificationEmail.isBlank()) {
-            log.debug("Email notifications disabled or no recipient configured");
+        if (!enabled || userEmail == null || userEmail.isBlank()) {
+            log.debug("Email notifications disabled or no user email configured");
             return;
         }
 
@@ -102,7 +102,66 @@ public class EmailService {
             productUrl
         );
 
-        sendEmail(notificationEmail, subject, htmlBody);
+        sendEmail(userEmail, subject, htmlBody);
+    }
+
+    /**
+     * Send a price increase notification email to a specific user.
+     */
+    public void sendPriceIncreaseNotification(String userEmail, String productName, String productUrl,
+                                              Double oldPrice, Double newPrice) {
+        if (!enabled || userEmail == null || userEmail.isBlank()) {
+            log.debug("Email notifications disabled or no user email configured");
+            return;
+        }
+
+        double increase = newPrice - oldPrice;
+        double percentIncrease = (increase / oldPrice) * 100;
+
+        String subject = String.format("📈 Preço subiu! %s", truncate(productName, 40));
+        
+        String htmlBody = String.format("""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #ffc107 0%%, #ff9800 100%%); padding: 20px; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">📈 Preço Subiu!</h1>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef;">
+                    <h2 style="color: #333; margin-top: 0;">%s</h2>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #666;">
+                            <strong>Preço anterior:</strong> 
+                            <span style="color: #28a745;">R$ %.2f</span>
+                        </p>
+                        <p style="margin: 5px 0;">
+                            <strong>Novo preço:</strong> 
+                            <span style="color: #dc3545; font-size: 24px; font-weight: bold;">R$ %.2f</span>
+                        </p>
+                        <p style="margin: 5px 0; color: #dc3545;">
+                            <strong>Aumento:</strong> R$ %.2f (+%.1f%%)
+                        </p>
+                    </div>
+                    
+                    <a href="%s" style="display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        Ver no Mercado Livre →
+                    </a>
+                </div>
+                
+                <div style="background: #333; color: #999; padding: 15px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                    MonitoraPreço - Mercado Livre
+                </div>
+            </div>
+            """,
+            productName,
+            oldPrice,
+            newPrice,
+            increase,
+            percentIncrease,
+            productUrl
+        );
+
+        sendEmail(userEmail, subject, htmlBody);
     }
 
     /**
