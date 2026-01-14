@@ -109,9 +109,14 @@ export default function Dashboard() {
     setAdding(true);
     try {
       console.log(`[INFO] ➕ Adding product from URL: ${url}`);
+      addToast('⏳ Carregando produto... Isso pode levar alguns segundos', 'info');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // Aumentado para 90 segundos (alguns produtos podem ser lentos para scrape)
+      const timeoutId = setTimeout(() => {
+        console.warn('[WARN] Timeout na requisição após 90 segundos');
+        controller.abort();
+      }, 90000);
       
       const response = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
@@ -136,10 +141,12 @@ export default function Dashboard() {
         const errorMsg = responseData.error || 'Erro desconhecido';
         console.error(`[ERROR] ❌ ${errorMsg}`);
         
-        if (errorMsg.includes('scraper')) {
-          addToast('❌ Scraper Python não está rodando', 'error');
+        if (errorMsg.includes('scraper') || errorMsg.includes('running')) {
+          addToast('❌ Scraper Python não está rodando ou é muito lento', 'error');
         } else if (errorMsg.includes('valid')) {
           addToast('❌ URL inválida ou produto não encontrado', 'error');
+        } else if (errorMsg.includes('timeout') || errorMsg.includes('lenta')) {
+          addToast('❌ Timeout: URL muito lenta. Tente novamente', 'error');
         } else {
           addToast(`❌ ${errorMsg}`, 'error');
         }
@@ -148,12 +155,14 @@ export default function Dashboard() {
     } catch (error) {
       console.error('[ERROR] ❌ Exception ao adicionar produto:', error);
       
+      // Tratamento específico para AbortError (timeout)
       if (error.name === 'AbortError') {
-        addToast('❌ Timeout ao scraper. URL muito lenta.', 'error');
+        console.error('[ERROR] ❌ Timeout: Scraper levou muito tempo para responder');
+        addToast('❌ Timeout: A URL é muito lenta ou o scraper não conseguiu carregar. Tente outra URL.', 'error');
       } else if (error.message.includes('Failed to fetch')) {
-        addToast(`❌ Não conseguiu conectar ao Backend`, 'error');
+        addToast('❌ Erro de conexão. Verifique se o backend está rodando', 'error');
       } else {
-        addToast('❌ Erro ao adicionar produto', 'error');
+        addToast(`❌ Erro ao adicionar produto: ${error.message}`, 'error');
       }
       return { success: false };
     } finally {

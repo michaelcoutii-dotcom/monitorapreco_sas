@@ -60,22 +60,31 @@ def scrape_mercadolivre(url: str) -> dict | None:
         # Initialize Playwright
         playwright = sync_playwright().start()
         
-        # Launch browser in headless mode
-        browser = playwright.chromium.launch(headless=True)
+        # Launch browser in headless mode with optimized settings
+        browser = playwright.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ]
+        )
         
         # Create a new browser context with a realistic user agent
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            ignore_https_errors=True
         )
         
         # Create a new page
         page = context.new_page()
         
-        # Navigate to the URL with timeout (30 seconds)
-        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+        # Navigate to the URL with shorter timeout (20 seconds) - carrega mais rápido
+        page.goto(url, timeout=20000, wait_until="load")
         
-        # Wait a moment for dynamic content to load
-        page.wait_for_timeout(2000)
+        # Reduzido de 2000ms para 800ms - carrega mais rápido
+        page.wait_for_timeout(800)
         
         # ========================================
         # ⚠️ ATENÇÃO: SELETORES CSS
@@ -123,6 +132,7 @@ def scrape_mercadolivre(url: str) -> dict | None:
             print(f"[WARN] Could not extract all data. Title: {title}, Price: {price}")
             return None
         
+        print(f"[INFO] ✅ Scrape successful: {title} - R$ {price:.2f}")
         return {
             "title": title,
             "price": price,
