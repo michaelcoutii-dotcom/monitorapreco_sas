@@ -57,6 +57,12 @@ public class Product {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "notify_on_price_drop")
+    private Boolean notifyOnPriceDrop = true;
+
+    @Column(name = "notify_on_price_increase")
+    private Boolean notifyOnPriceIncrease = true;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PriceHistory> priceHistory = new ArrayList<>();
 

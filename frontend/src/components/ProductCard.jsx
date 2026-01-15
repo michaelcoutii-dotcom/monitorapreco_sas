@@ -1,42 +1,46 @@
 import { useState } from 'react'
 import PriceHistoryModal from './PriceHistoryModal'
+import NotificationPreferences from './NotificationPreferences'
 
-export default function ProductCard({ product, onDelete, onShowHistory }) {
+export default function ProductCard({ product, onDelete, onShowHistory, onUpdateProduct }) {
   const [showHistory, setShowHistory] = useState(false)
+  const [showPreferences, setShowPreferences] = useState(false)
 
   const priceChange = product.lastPrice 
     ? ((product.currentPrice - product.lastPrice) / product.lastPrice * 100).toFixed(1)
     : 0
   const isPriceDropped = priceChange < 0
-  const priceChangeIcon = isPriceDropped ? '📉' : '📈'
 
   return (
     <>
-      <div className="rounded-2xl shadow-lg hover:shadow-2xl bg-white border border-gray-100 overflow-hidden transition-all duration-300 hover:border-indigo-200 hover:-translate-y-1 group">
-        {/* Price Badge */}
+      <div 
+        className="rounded-2xl shadow-lg hover:shadow-2xl bg-white border border-gray-100 overflow-hidden transition-all duration-300 hover:border-indigo-200 hover:-translate-y-1 group"
+      >
+        {/* Price Drop Alert */}
         {isPriceDropped && (
-          <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 text-center font-bold text-sm">
+          <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 text-white px-[clamp(0.75rem,2vw,1.25rem)] py-[clamp(0.5rem,1.5vh,0.75rem)] text-center font-bold text-[clamp(0.75rem,1.5vw,0.875rem)]">
             🎉 PREÇO CAIU {Math.abs(priceChange)}%
           </div>
         )}
 
         {/* Card Content */}
-        <div className="p-6">
-          {/* Header com delete */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 pr-4">
+        <div className="p-[clamp(1rem,5vw,1.5rem)]">
+          
+          {/* Product Header with Delete */}
+          <div className="flex items-start justify-between mb-[1rem]">
+            <div className="flex-1 pr-[0.5rem]">
               <a 
                 href={product.url} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-base font-bold text-gray-900 hover:text-indigo-600 line-clamp-2 transition-colors group-hover:text-indigo-500"
+                className="text-[clamp(0.875rem,2vw,1rem)] font-bold text-gray-900 hover:text-indigo-600 line-clamp-2 transition-colors group-hover:text-indigo-500 leading-snug"
               >
                 {product.name}
               </a>
             </div>
             <button
               onClick={() => onDelete(product.id, product.name)}
-              className="p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer hover:scale-110 active:scale-95"
+              className="p-[0.5rem] rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer hover:scale-110 active:scale-95"
               title="Deletar produto"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 hover:text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,54 +49,69 @@ export default function ProductCard({ product, onDelete, onShowHistory }) {
             </button>
           </div>
 
-          {/* Price Info Section */}
-          <div className={`mb-5 p-4 rounded-xl transition-all duration-300 ${
+          {/* Price Display Section */}
+          <div className={`mb-[1.25rem] p-[clamp(0.75rem,2vw,1rem)] rounded-xl transition-all duration-300 ${
             isPriceDropped 
-              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200' 
+              ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200' 
               : 'bg-gradient-to-br from-gray-50 to-gray-100'
           }`}>
-            <div className="flex items-baseline justify-between mb-3">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Preço Atual</span>
-              <span className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                R$ {product.currentPrice?.toFixed(2) || '0.00'}
+            {/* Current Price */}
+            <div className="mb-[0.75rem]">
+              <span className="text-[clamp(0.5rem,1vw,0.625rem)] font-bold text-gray-700 uppercase tracking-widest">
+                💰 Preço Atual
               </span>
+              <div className="text-[clamp(1.75rem,4vw,2.25rem)] font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mt-[0.25rem]">
+                R$ {product.currentPrice?.toFixed(2) || '0.00'}
+              </div>
             </div>
             
+            {/* Price Change */}
             {product.lastPrice && (
-              <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-between text-[clamp(0.75rem,1.5vw,0.875rem)] pt-[0.75rem] border-t border-gray-200">
                 <span className="text-gray-700">
-                  <span className="font-semibold">Último:</span> R$ {product.lastPrice.toFixed(2)}
+                  <span className="font-semibold">Antes:</span> R$ {product.lastPrice.toFixed(2)}
                 </span>
-                <span className={`font-bold text-lg flex items-center gap-1 ${
-                  isPriceDropped ? 'text-green-600' : 'text-red-600'
+                <span className={`font-bold flex items-center gap-[0.25rem] ${
+                  isPriceDropped ? 'text-emerald-600' : 'text-red-600'
                 }`}>
-                  {priceChangeIcon} {Math.abs(priceChange)}%
+                  {isPriceDropped ? '📉' : '📈'} {Math.abs(priceChange)}%
                 </span>
               </div>
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
+          {/* Action Buttons Grid */}
+          <div className="grid grid-cols-3 gap-[0.75rem]">
+            {/* History Button */}
             <button
               onClick={() => setShowHistory(true)}
-              className="flex-1 px-4 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-[0.25rem] min-h-[44px]"
+              title="Ver histórico de preços"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-              </svg>
-              Histórico
+              <span className="text-[1em]">📊</span>
+              <span className="hidden sm:inline">Histórico</span>
             </button>
+
+            {/* Notification Button */}
+            <button
+              onClick={() => setShowPreferences(true)}
+              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 hover:border-purple-600 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-[0.25rem] min-h-[44px]"
+              title="Configurar notificações"
+            >
+              <span className="text-[1em]">🔔</span>
+              <span className="hidden sm:inline">Alertas</span>
+            </button>
+
+            {/* Visit Button */}
             <a
               href={product.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 px-4 py-3 rounded-xl text-sm font-bold bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 hover:border-green-600 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-600 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-[0.25rem] min-h-[44px]"
+              title="Visitar no Mercado Livre"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Visitar
+              <span className="text-[1em]">🔗</span>
+              <span className="hidden sm:inline">Visitar</span>
             </a>
           </div>
         </div>
@@ -106,6 +125,19 @@ export default function ProductCard({ product, onDelete, onShowHistory }) {
           onClose={() => setShowHistory(false)}
         />
       )}
+      {showPreferences && (
+        <NotificationPreferences
+          product={product}
+          onClose={() => setShowPreferences(false)}
+          onSave={(updatedProduct) => {
+            if (onUpdateProduct) {
+              onUpdateProduct(updatedProduct);
+            }
+            setShowPreferences(false);
+          }}
+        />
+      )}
     </>
   )
 }
+

@@ -1,64 +1,40 @@
 """
-Mercado Livre Scraper API
-FastAPI wrapper for the scraping function.
-
-Run with:
-    uvicorn main:app --reload
-
-Or:
-    C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe -m uvicorn main:app --reload
+Mercado Livre Scraper API (Async)
+FastAPI wrapper for the asynchronous scraping function.
 """
+
+from contextlib import asynccontextmanager
+import asyncio
+import sys
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from typing import Optional
 
-from scraper import scrape_mercadolivre
+from scraper import Scraper
 
 
 # ========================================
-# Pydantic Models (Request/Response Contract)
+# Application Lifecycle (Lifespan)
 # ========================================
 
-class ScrapeRequest(BaseModel):
-    """Request model for the /scrape endpoint."""
-    url: str
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handles startup and shutdown events for the FastAPI application.
+    """
+    print("[INFO] Application startup: Initializing scraper...")
+    # Initialize the scraper on startup. This will launch a persistent browser instance.
+    await Scraper.initialize()
+    print("[INFO] Scraper initialized successfully.")
     
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "url": "https://www.mercadolivre.com.br/produto-exemplo"
-                }
-            ]
-        }
-    }
-
-
-class ScrapeResponse(BaseModel):
-    """Response model for successful scraping."""
-    title: str
-    price: float
-    imageUrl: Optional[str] = None
+    yield  # The application is now running
     
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "title": "Cadeira Escritório Ergonômica",
-                    "price": 3700.63,
-                    "imageUrl": "https://http2.mlstatic.com/D_NQ_NP_example.webp"
-                }
-            ]
-        }
-    }
-
-
-class ErrorResponse(BaseModel):
-    """Response model for errors."""
-    error: str
-    detail: Optional[str] = None
+    print("[INFO] Application shutdown: Closing scraper...")
+    # Close the scraper resources (browser) on shutdown.
+    await Scraper.close()
+    print("[INFO] Scraper closed successfully.")
 
 
 # ========================================
@@ -67,11 +43,12 @@ class ErrorResponse(BaseModel):
 
 app = FastAPI(
     title="Mercado Livre Scraper API",
-    description="API para extrair título e preço de produtos do Mercado Livre",
-    version="1.0.0"
+    description="Asynchronous API to extract title, price, and image from Mercado Livre products.",
+    version="2.0.0",
+    lifespan=lifespan  # Use the lifespan context manager
 )
 
-# CORS Middleware - Allow all origins (for development)
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -82,56 +59,87 @@ app.add_middleware(
 
 
 # ========================================
+# Pydantic Models
+# ========================================
+
+class ScrapeRequest(BaseModel):
+    url: str
+
+class ScrapeResponse(BaseModel):
+    title: str
+    price: float
+    imageUrl: Optional[str] = None
+
+class ErrorResponse(BaseModel):
+    error: str
+    detail: Optional[str] = None
+
+
+# ========================================
 # Endpoints
 # ========================================
 
 @app.get("/")
-def root():
+async def root():
     """Health check endpoint."""
     return {
         "status": "online",
         "service": "Mercado Livre Scraper API",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "scraper_status": "initialized" if Scraper.is_initialized() else "uninitialized"
     }
 
 
 @app.post("/scrape", response_model=ScrapeResponse, responses={422: {"model": ErrorResponse}})
-def scrape_product(request: ScrapeRequest):
+async def scrape_product(request: ScrapeRequest):
     """
-    Scrape a Mercado Livre product page.
-    
-    - **url**: Full URL of the Mercado Livre product page
-    
-    Returns the product title and current price.
+    Asynchronously scrapes a Mercado Livre product page.
     """
-    # Validate URL contains mercadolivre
     if "mercadolivre" not in request.url and "mercadolibre" not in request.url:
         raise HTTPException(
             status_code=422,
             detail="URL must be from Mercado Livre (mercadolivre.com.br or mercadolibre.com)"
         )
     
-    # Call the scraper
-    result = scrape_mercadolivre(request.url)
-    
-    # Handle scraping failure
-    if result is None:
+    try:
+        # Use the Scraper class to perform the scraping.
+        result = await Scraper.scrape_mercadolivre(request.url)
+        
+        if result is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Failed to scrape product data. The page may be unavailable or selectors need updating."
+            )
+        
+        return ScrapeResponse(**result)
+
+    except asyncio.TimeoutError:
         raise HTTPException(
-            status_code=422,
-            detail="Failed to scrape product data. The page may be unavailable or the selectors may have changed."
+            status_code=504,
+            detail="Scraping timed out. The page took too long to load or process."
         )
-    
-    return ScrapeResponse(
-        title=result["title"],
-        price=result["price"],
-        imageUrl=result.get("imageUrl")
-    )
-
+    except Exception as e:
+        print(f"[ERROR] An unexpected error occurred during scraping: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"An internal server error occurred: {e}"
+        )
 
 # ========================================
-# Run directly (alternative to uvicorn command)
+# Run directly for testing
 # ========================================
+
+def run_server():
+    """
+    Runs the Uvicorn server programmatically.
+    This function is the target for watchgod.
+    """
+    import uvicorn
+    # reload=False is crucial to avoid the asyncio/Playwright conflict on Windows.
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False, lifespan="on")
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # This block allows running the server directly with `python main.py`.
+    # The recommended way for auto-reload development is using watchgod:
+    # python -m watchgod main.run_server
+    run_server()

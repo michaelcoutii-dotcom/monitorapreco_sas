@@ -1,67 +1,51 @@
 """
-Mercado Livre Price Scraper
-Uses Playwright to extract product title and price from a given URL.
+Mercado Livre Price Scraper (Asynchronous)
+Uses a persistent Playwright browser instance to efficiently extract product data.
 """
-
+import asyncio
 import re
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+from playwright.async_api import async_playwright, Playwright, Browser, Page, TimeoutError as PlaywrightTimeout
 
+# List of resource types to block for faster scraping
+BLOCKED_RESOURCE_TYPES = [
+  "image",
+  "stylesheet",
+  "font",
+  "media",
+  "texttrack",
+  "object",
+  "beacon",
+  "csp_report",
+  "imageset",
+]
 
 def normalize_price(price_str: str) -> float | None:
-    """
-    Normalize a Brazilian price string to a float.
-    
-    Examples:
-        "R$ 1.234,56" -> 1234.56
-        "1.234,56" -> 1234.56
-        "R$1234,56" -> 1234.56
-    
-    Returns None if conversion fails.
-    """
+    """Normalize a Brazilian price string to a float."""
     if not price_str:
         return None
-    
     try:
-        # Remove currency symbol and whitespace
-        cleaned = price_str.replace("R$", "").strip()
-        
-        # Remove thousand separators (dots in Brazilian format)
-        cleaned = cleaned.replace(".", "")
-        
-        # Convert decimal separator (comma to dot)
-        cleaned = cleaned.replace(",", ".")
-        
-        # Remove any remaining non-numeric characters except dot
-        cleaned = re.sub(r"[^\d.]", "", cleaned)
-        
+        cleaned = re.sub(r'[^\d,]', '', price_str).replace(",", ".")
         return float(cleaned)
     except (ValueError, AttributeError):
         return None
 
+class Scraper:
+    """
+    A class to manage a persistent Playwright browser instance for scraping.
+    The browser is launched once and reused across multiple scraping requests.
+    """
+    playwright: Playwright = None
+    browser: Browser = None
 
-def scrape_mercadolivre(url: str) -> dict | None:
-    """
-    Scrape product title and price from a Mercado Livre product page.
-    
-    Args:
-        url: The full URL of the Mercado Livre product page.
+    @classmethod
+    async def initialize(cls):
+        """Initializes Playwright and launches a persistent browser instance."""
+        if cls.browser and cls.browser.is_connected():
+            print("[INFO] Scraper already initialized.")
+            return
         
-    Returns:
-        A dictionary with 'title' and 'price' keys, or None if scraping fails.
-        
-    Example:
-        >>> result = scrape_mercadolivre("https://www.mercadolivre.com.br/produto-exemplo")
-        >>> print(result)
-        {'title': 'Product Name', 'price': 1234.56}
-    """
-    browser = None
-    
-    try:
-        # Initialize Playwright
-        playwright = sync_playwright().start()
-        
-        # Launch browser in headless mode with optimized settings
-        browser = playwright.chromium.launch(
+        cls.playwright = await async_playwright().start()
+        cls.browser = await cls.playwright.chromium.launch(
             headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -70,108 +54,120 @@ def scrape_mercadolivre(url: str) -> dict | None:
                 "--no-default-browser-check",
             ]
         )
+        print("[INFO] Persistent browser instance launched.")
+
+    @classmethod
+    async def close(cls):
+        """Closes the browser and stops Playwright."""
+        if cls.browser and cls.browser.is_connected():
+            await cls.browser.close()
+        if cls.playwright:
+            await cls.playwright.stop()
+        print("[INFO] Browser instance closed.")
         
-        # Create a new browser context with a realistic user agent
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            ignore_https_errors=True
-        )
-        
-        # Create a new page
-        page = context.new_page()
-        
-        # Navigate to the URL with shorter timeout (20 seconds) - carrega mais rápido
-        page.goto(url, timeout=20000, wait_until="load")
-        
-        # Reduzido de 2000ms para 800ms - carrega mais rápido
-        page.wait_for_timeout(800)
-        
-        # ========================================
-        # ⚠️ ATENÇÃO: SELETORES CSS
-        # Os seletores abaixo podem mudar.
-        # Abra o Mercado Livre → F12 → Inspecione
-        # o título e preço e ajuste se necessário.
-        # ========================================
-        
-        # Extract product title
-        # Selector: h1 tag with class containing "ui-pdp-title"
-        title_element = page.query_selector("h1.ui-pdp-title")
-        if not title_element:
-            # Fallback selector
-            title_element = page.query_selector("h1")
-        
-        title = title_element.inner_text().strip() if title_element else None
-        
-        # Extract product image
-        image_url = None
-        image_element = page.query_selector("figure.ui-pdp-gallery__figure img")
-        if not image_element:
-            image_element = page.query_selector(".ui-pdp-image img")
-        if not image_element:
-            image_element = page.query_selector("img[data-zoom]")
-        if image_element:
-            image_url = image_element.get_attribute("src") or image_element.get_attribute("data-src")
-        
-        # Extract product price
-        # Selector: Price container with fraction part
-        # Mercado Livre splits price into integer and cents
-        price_int_element = page.query_selector(".andes-money-amount__fraction")
-        price_cents_element = page.query_selector(".andes-money-amount__cents")
-        
-        price = None
-        if price_int_element:
-            price_int = price_int_element.inner_text().strip()
-            price_cents = price_cents_element.inner_text().strip() if price_cents_element else "00"
+    @classmethod
+    def is_initialized(cls) -> bool:
+        """Check if the browser is running."""
+        return cls.browser is not None and cls.browser.is_connected()
+
+    @staticmethod
+    async def _block_unnecessary_requests(page: Page):
+        """Set up routing to block non-essential resources."""
+        await page.route("**/*", lambda route: route.abort() if route.request.resource_type in BLOCKED_RESOURCE_TYPES else route.continue_())
+
+    @classmethod
+    async def scrape_mercadolivre(cls, url: str, timeout: int = 20000) -> dict | None:
+        """
+        Scrapes product data from a Mercado Livre URL using the persistent browser.
+        """
+        if not cls.is_initialized():
+            raise RuntimeError("Scraper is not initialized. Call Scraper.initialize() first.")
+
+        context = None
+        try:
+            # Create a new, isolated browser context for this request
+            context = await cls.browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                ignore_https_errors=True
+            )
+            page = await context.new_page()
+
+            # Block unnecessary assets
+            await cls._block_unnecessary_requests(page)
+
+            print(f"[INFO] Navigating to {url}")
+            await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+
+            # Wait for the main price or title to appear, which is more reliable than a fixed timeout
+            await page.wait_for_selector("h1.ui-pdp-title, .andes-money-amount__fraction", timeout=10000)
+
+            # Extract title
+            title_element = await page.query_selector("h1.ui-pdp-title")
+            title = await title_element.inner_text() if title_element else "Title not found"
+            title = title.strip()
+
+            # Extract image URL
+            image_url = None
+            image_element = await page.query_selector("figure.ui-pdp-gallery__figure img")
+            if image_element:
+                image_url = await image_element.get_attribute("src")
+
+            # Extract price
+            price_int_element = await page.query_selector(".andes-money-amount__fraction")
+            price_cents_element = await page.query_selector(".andes-money-amount__cents")
+            price = None
+            if price_int_element:
+                price_int = await price_int_element.inner_text()
+                price_cents = await price_cents_element.inner_text() if price_cents_element else "00"
+                price_str = f"{price_int},{price_cents}"
+                price = normalize_price(price_str)
             
-            # Combine integer and cents parts
-            price_str = f"{price_int},{price_cents}"
-            price = normalize_price(price_str)
-        
-        # Validate that we got both title and price
-        if not title or price is None:
-            print(f"[WARN] Could not extract all data. Title: {title}, Price: {price}")
+            if not title or price is None:
+                print(f"[WARN] Could not extract all data. Title: {title}, Price: {price}")
+                return None
+
+            print(f"[INFO] ✅ Scrape successful: {title} - R$ {price:.2f}")
+            return {"title": title, "price": price, "imageUrl": image_url}
+
+        except PlaywrightTimeout:
+            print(f"[ERROR] Timeout while processing page: {url}")
             return None
-        
-        print(f"[INFO] ✅ Scrape successful: {title} - R$ {price:.2f}")
-        return {
-            "title": title,
-            "price": price,
-            "imageUrl": image_url
-        }
-        
-    except PlaywrightTimeout:
-        print(f"[ERROR] Timeout while loading page: {url}")
-        return None
-    except Exception as e:
-        print(f"[ERROR] Failed to scrape {url}: {str(e)}")
-        return None
-    finally:
-        # Ensure browser is always closed
-        if browser:
-            browser.close()
-            playwright.stop()
+        except Exception as e:
+            print(f"[ERROR] Failed to scrape {url}: {str(e)}")
+            return None
+        finally:
+            if context:
+                await context.close()
 
 
 # ========================================
 # TEST BLOCK - Run this file directly to test
 # ========================================
-if __name__ == "__main__":
-    # Example URL - replace with a real Mercado Livre product URL
-    test_url = "https://www.mercadolivre.com.br/cadeira-escritorio-ergonmica-sensetup-cosy-t03-preto-mesh-reclinavel-com-apoio-de-bracos-3d/p/MLB24578456?pdp_filters=item_id:MLB4325236683#is_advertising=true&searchVariation=MLB24578456&backend_model=search-backend&position=1&search_layout=grid&type=pad&tracking_id=aaa1abae-f179-4fe7-a3a8-0e0c24a268d3&ad_domain=VQCATCORE_LST&ad_position=1&ad_click_id=MTkxMDVmM2UtYWI1OC00NjlhLTk3MmYtMjVlZDFmYWExM2Ez"
+async def main():
+    test_url = "https://www.mercadolivre.com.br/cadeira-escritorio-ergonmica-sensetup-cosy-t03-preto-mesh-reclinavel-com-apoio-de-bracos-3d/p/MLB24578456"
     
     print("=" * 50)
-    print("Testing Mercado Livre Scraper")
+    print("Testing Async Mercado Livre Scraper")
     print("=" * 50)
+    
+    await Scraper.initialize()
+    
     print(f"URL: {test_url}")
     print("-" * 50)
     
-    result = scrape_mercadolivre(test_url)
+    result = await Scraper.scrape_mercadolivre(test_url)
     
     if result:
-        print(f"✅ Success!")
+        print("✅ Success!")
         print(f"   Title: {result['title']}")
         print(f"   Price: R$ {result['price']:.2f}")
+        print(f"   Image URL: {result['imageUrl']}")
     else:
         print("❌ Failed to scrape product data")
     
+    await Scraper.close()
+    
     print("=" * 50)
+
+if __name__ == "__main__":
+    asyncio.run(main())

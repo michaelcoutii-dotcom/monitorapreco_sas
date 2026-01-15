@@ -1,5 +1,6 @@
 package com.mercadolivre.pricemonitor.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO for the response received from the Python scraper API.
- * 
+ *
  * Example:
  * {
  *   "title": "Produto Nome",
@@ -29,6 +30,13 @@ public class ScrapeResponse {
     @JsonProperty("imageUrl")
     private String imageUrl;
 
+    /**
+     * Internal field used to track which product this response belongs to during async updates.
+     * It is not part of the JSON response from the scraper.
+     */
+    @JsonIgnore
+    private Long productIdForUpdate;
+
     @Override
     public String toString() {
         return "ScrapeResponse{" +
@@ -42,3 +50,4 @@ public class ScrapeResponse {
         return title != null && !title.isBlank() && price != null && price > 0;
     }
 }
+

@@ -1,341 +1,197 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { getProducts, addProduct as apiAddProduct, deleteProduct as apiDeleteProduct, refreshPrices as apiRefreshPrices } from '../api/products';
+
 import Header from './Header';
 import AddProduct from './AddProduct';
 import ProductList from './ProductList';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import PriceHistoryModal from './PriceHistoryModal';
-
-// API URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+import useToasts from '../hooks/useToasts';
 
 export default function Dashboard() {
-  const { token, logout } = useContext(AuthContext);
+    const queryClient = useQueryClient();
+    const { toasts, addToast, removeToast } = useToasts();
 
-  // Products state
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [adding, setAdding] = useState(false);
+    // State for UI controls
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState('name');
+    const [filterBy, setFilterBy] = useState('all');
+    const [confirmModal, setConfirmModal] = useState({ open: false, productId: null, productName: '' });
+    const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
 
-  // Filter & Sort state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [filterBy, setFilterBy] = useState('all');
+    // --- React Query ---
 
-  // Toast state
-  const [toasts, setToasts] = useState([]);
-
-  // Modal state
-  const [confirmModal, setConfirmModal] = useState({ open: false, productId: null, productName: '' });
-  const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
-
-  // Toast functions
-  const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  // Fetch products com token autenticação
-  const fetchProducts = async (retries = 3) => {
-    try {
-      console.log(`[INFO] 📦 Fetching products with auth...`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      const response = await fetch(`${API_URL}/api/products`, {
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.status === 401) {
-        console.warn('[WARN] ⚠️ Token inválido/expirado');
-        logout();
-        return;
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setProducts(Array.isArray(data) ? data : []);
-      console.log(`[SUCCESS] ✅ Fetched ${data.length} products`);
-    } catch (error) {
-      console.error('[ERROR] ❌ Erro ao buscar produtos:', error.message);
-      
-      if (retries > 0 && (error.name === 'AbortError' || error.message.includes('Failed to fetch'))) {
-        console.log(`[RETRY] 🔄 Tentando novamente... (${3 - retries + 1}/3)`);
-        setTimeout(() => fetchProducts(retries - 1), 1000);
-        return;
-      }
-      
-      addToast(
-        'Erro ao carregar produtos. Verifique se o Backend está rodando em ' + API_URL,
-        'error'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, [token]);
-
-  // Add product
-  const addProduct = async (url) => {
-    try {
-      new URL(url);
-    } catch {
-      addToast('URL inválida. Use um endereço completo (https://...)', 'error');
-      return { success: false };
-    }
-
-    setAdding(true);
-    try {
-      console.log(`[INFO] ➕ Adding product from URL: ${url}`);
-      addToast('⏳ Carregando produto... Isso pode levar alguns segundos', 'info');
-      
-      const controller = new AbortController();
-      // Aumentado para 90 segundos (alguns produtos podem ser lentos para scrape)
-      const timeoutId = setTimeout(() => {
-        console.warn('[WARN] Timeout na requisição após 90 segundos');
-        controller.abort();
-      }, 90000);
-      
-      const response = await fetch(`${API_URL}/api/products`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url })
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const responseData = await response.json();
-      
-      if (response.ok) {
-        console.log(`[SUCCESS] ✅ Product added: ${responseData.name}`);
-        addToast(`✅ "${responseData.name}" adicionado com sucesso!`, 'success');
-        fetchProducts();
-        return { success: true };
-      } else {
-        const errorMsg = responseData.error || 'Erro desconhecido';
-        console.error(`[ERROR] ❌ ${errorMsg}`);
-        
-        if (errorMsg.includes('scraper') || errorMsg.includes('running')) {
-          addToast('❌ Scraper Python não está rodando ou é muito lento', 'error');
-        } else if (errorMsg.includes('valid')) {
-          addToast('❌ URL inválida ou produto não encontrado', 'error');
-        } else if (errorMsg.includes('timeout') || errorMsg.includes('lenta')) {
-          addToast('❌ Timeout: URL muito lenta. Tente novamente', 'error');
-        } else {
-          addToast(`❌ ${errorMsg}`, 'error');
-        }
-        return { success: false };
-      }
-    } catch (error) {
-      console.error('[ERROR] ❌ Exception ao adicionar produto:', error);
-      
-      // Tratamento específico para AbortError (timeout)
-      if (error.name === 'AbortError') {
-        console.error('[ERROR] ❌ Timeout: Scraper levou muito tempo para responder');
-        addToast('❌ Timeout: A URL é muito lenta ou o scraper não conseguiu carregar. Tente outra URL.', 'error');
-      } else if (error.message.includes('Failed to fetch')) {
-        addToast('❌ Erro de conexão. Verifique se o backend está rodando', 'error');
-      } else {
-        addToast(`❌ Erro ao adicionar produto: ${error.message}`, 'error');
-      }
-      return { success: false };
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  // Delete product
-  const handleDeleteClick = (id, name) => {
-    setConfirmModal({ open: true, productId: id, productName: name });
-  };
-
-  const confirmDelete = async () => {
-    const { productId, productName } = confirmModal;
-    console.log(`[DEBUG] confirmDelete called with:`, { productId, productName, confirmModal });
-    console.log(`[DEBUG] Token present:`, !!token);
-    console.log(`[DEBUG] API_URL:`, API_URL);
-    
-    if (!productId) {
-      console.warn('[WARN] ProductId is missing!');
-      return;
-    }
-
-    try {
-      console.log(`[INFO] 🗑️ Deleting product: ${productId} | Token: ${token ? 'OK' : 'MISSING'}`);
-      
-      const response = await fetch(`${API_URL}/api/products/${productId}`, { 
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-      
-      console.log(`[DEBUG] Response status: ${response.status}, OK: ${response.ok}`);
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error(`[ERROR] Server response: ${response.status}`, errorData);
-        throw new Error(`HTTP ${response.status}: ${errorData || 'Erro desconhecido'}`);
-      }
-      
-      console.log(`[SUCCESS] ✅ Product deleted: ${productName}`);
-      addToast(`✅ "${productName}" removido com sucesso`, 'success');
-      fetchProducts();
-    } catch (error) {
-      console.error('[ERROR] ❌ Erro ao deletar produto:', error.message);
-      addToast(`❌ ${error.message}`, 'error');
-    } finally {
-      setConfirmModal({ open: false, productId: null, productName: '' });
-    }
-  };
-
-  // Refresh prices
-  const refreshPrices = async () => {
-    setRefreshing(true);
-    try {
-      console.log(`[INFO] 🔄 Refreshing prices...`);
-      
-      const response = await fetch(`${API_URL}/api/products/refresh`, { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      addToast('🔄 Preços sendo atualizados...', 'info');
-      console.log('[SUCCESS] ✅ Price refresh triggered');
-      
-      setTimeout(() => {
-        fetchProducts();
-        setRefreshing(false);
-      }, 2000);
-    } catch (error) {
-      console.error('[ERROR] ❌ Erro ao atualizar preços:', error);
-      addToast('❌ Erro ao atualizar preços', 'error');
-      setRefreshing(false);
-    }
-  };
-
-  // Show price history
-  const showPriceHistory = (product) => {
-    setPriceHistoryModal({ open: true, product });
-  };
-
-  // Filter and sort products
-  const filteredProducts = products
-    .filter(product => {
-      if (searchTerm && !product.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-      if (filterBy === 'priceDropped' && !(product.lastPrice && product.currentPrice < product.lastPrice)) {
-        return false;
-      }
-      if (filterBy === 'priceUp' && !(product.lastPrice && product.currentPrice > product.lastPrice)) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'price':
-          return a.currentPrice - b.currentPrice;
-        case 'priceDesc':
-          return b.currentPrice - a.currentPrice;
-        case 'priceChange':
-          const changeA = a.lastPrice ? ((a.currentPrice - a.lastPrice) / a.lastPrice) : 0;
-          const changeB = b.lastPrice ? ((b.currentPrice - b.lastPrice) / b.lastPrice) : 0;
-          return changeA - changeB;
-        default:
-          return 0;
-      }
+    // Query for fetching products
+    const { data: products = [], isLoading: isLoadingProducts, isError: isFetchError } = useQuery({
+        queryKey: ['products'],
+        queryFn: getProducts,
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header 
-        onRefresh={refreshPrices} 
-        refreshing={refreshing}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
-      <main className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50">
-        <div className="container mx-auto px-4 py-10 max-w-7xl">
-          <AddProduct onAdd={addProduct} adding={adding} />
-          <ProductList 
-            products={filteredProducts}
-            totalProducts={products.length}
-            loading={loading} 
-            onDelete={handleDeleteClick}
-            onShowHistory={showPriceHistory}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            filterBy={filterBy}
-            onFilterChange={setFilterBy}
-          />
+    // Mutation for adding a product
+    const { mutate: addProduct, isPending: isAddingProduct } = useMutation({
+        mutationFn: apiAddProduct,
+        onSuccess: (newProduct) => {
+            addToast(`✅ "${newProduct.name}" adicionado com sucesso!`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+        },
+        onError: (error) => {
+            addToast(`❌ ${error.message}`, 'error');
+        },
+    });
+
+    // Mutation for deleting a product
+    const { mutate: deleteProduct } = useMutation({
+        mutationFn: apiDeleteProduct,
+        onSuccess: (_, variables) => {
+            // `variables` is the productId passed to the mutate function
+            const productName = products.find(p => p.id === variables)?.name || 'Produto';
+            addToast(`✅ "${productName}" removido com sucesso.`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+        },
+        onError: (error) => {
+            addToast(`❌ ${error.message}`, 'error');
+        },
+        onSettled: () => {
+            setConfirmModal({ open: false, productId: null, productName: '' });
+        }
+    });
+
+    // Mutation for refreshing prices
+    const { mutate: refreshPrices, isPending: isRefreshing } = useMutation({
+        mutationFn: apiRefreshPrices,
+        onSuccess: () => {
+            addToast('🔄 Preços sendo atualizados em segundo plano...', 'info');
+            // Wait a bit for the backend to process, then refetch
+            setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ['products'] });
+            }, 5000);
+        },
+        onError: (error) => {
+            addToast(`❌ ${error.message}`, 'error');
+        }
+    });
+
+
+    // --- Event Handlers ---
+
+    const handleAddProduct = (url) => {
+        try {
+            new URL(url);
+            addToast('⏳ Adicionando produto... Isso pode levar alguns segundos.', 'info');
+            addProduct(url);
+            return { success: true };
+        } catch {
+            addToast('URL inválida. Use um endereço completo (https://...)', 'error');
+            return { success: false };
+        }
+    };
+
+    const handleDeleteClick = (id, name) => {
+        setConfirmModal({ open: true, productId: id, productName: name });
+    };
+
+    const confirmDelete = () => {
+        if (confirmModal.productId) {
+            deleteProduct(confirmModal.productId);
+        }
+    };
+
+    // --- Derived State (Filtering and Sorting) ---
+
+    const filteredAndSortedProducts = useMemo(() => {
+        return products
+            .filter(product => {
+                if (searchTerm && !product.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    return false;
+                }
+                if (filterBy === 'priceDropped' && !(product.lastPrice && product.currentPrice < product.lastPrice)) {
+                    return false;
+                }
+                if (filterBy === 'priceUp' && !(product.lastPrice && product.currentPrice > product.lastPrice)) {
+                    return false;
+                }
+                return true;
+            })
+            .sort((a, b) => {
+                switch (sortBy) {
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'price':
+                        return a.currentPrice - b.currentPrice;
+                    case 'priceDesc':
+                        return b.currentPrice - a.currentPrice;
+                    case 'priceChange':
+                        const changeA = a.lastPrice ? ((a.currentPrice - a.lastPrice) / a.lastPrice) : 0;
+                        const changeB = b.lastPrice ? ((b.currentPrice - b.lastPrice) / b.lastPrice) : 0;
+                        return changeA - changeB;
+                    default:
+                        return 0;
+                }
+            });
+    }, [products, searchTerm, filterBy, sortBy]);
+
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <Header
+                onRefresh={refreshPrices}
+                refreshing={isRefreshing}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+            />
+            <main className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50">
+                <div className="container mx-auto px-4 py-10 max-w-7xl">
+                    <AddProduct onAdd={handleAddProduct} adding={isAddingProduct} />
+                    
+                    {isFetchError && (
+                         <div className="rounded-2xl shadow-lg p-8 text-center bg-red-50 text-red-700">
+                           <h3 className="text-xl font-semibold mb-2">❌ Erro ao Carregar Produtos</h3>
+                           <p>Não foi possível buscar os dados. Verifique a conexão com o servidor.</p>
+                         </div>
+                    )}
+
+                    <ProductList
+                        products={filteredAndSortedProducts}
+                        totalProducts={products.length}
+                        loading={isLoadingProducts}
+                        onDelete={handleDeleteClick}
+                        onShowHistory={(product) => setPriceHistoryModal({ open: true, product })}
+                        sortBy={sortBy}
+                        onSortChange={setSortBy}
+                        filterBy={filterBy}
+                        onFilterChange={setFilterBy}
+                    />
+                </div>
+            </main>
+
+            <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+                {toasts.map(toast => (
+                    <Toast
+                        key={toast.id}
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => removeToast(toast.id)}
+                    />
+                ))}
+            </div>
+
+            <ConfirmModal
+                open={confirmModal.open}
+                title="Remover Produto"
+                message={`Tem certeza que deseja remover "${confirmModal.productName}"?`}
+                onConfirm={confirmDelete}
+                onCancel={() => setConfirmModal({ open: false, productId: null, productName: '' })}
+            />
+
+            <PriceHistoryModal
+                open={priceHistoryModal.open}
+                product={priceHistoryModal.product}
+                onClose={() => setPriceHistoryModal({ open: false, product: null })}
+            />
         </div>
-      </main>
-
-      {/* Toast Container */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map(toast => (
-          <Toast 
-            key={toast.id} 
-            message={toast.message} 
-            type={toast.type} 
-            onClose={() => removeToast(toast.id)} 
-          />
-        ))}
-      </div>
-
-      {/* Confirm Delete Modal */}
-      <ConfirmModal
-        open={confirmModal.open}
-        title="Remover Produto"
-        message={`Tem certeza que deseja remover "${confirmModal.productName}"?`}
-        onConfirm={confirmDelete}
-        onCancel={() => setConfirmModal({ open: false, productId: null, productName: '' })}
-      />
-
-      {/* Price History Modal */}
-      <PriceHistoryModal
-        open={priceHistoryModal.open}
-        product={priceHistoryModal.product}
-        onClose={() => setPriceHistoryModal({ open: false, product: null })}
-      />
-    </div>
-  );
+    );
 }

@@ -20,7 +20,8 @@ public class WebConfig implements WebMvcConfigurer {
             // Production - remover localhost antes de deploy!
             // .allowedOrigins("https://seu-dominio.com")
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .allowedHeaders("*")
+            .allowedHeaders("Authorization", "Content-Type", "X-Requested-With", "accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers")
+            .exposedHeaders("Authorization", "Content-Type")
             .allowCredentials(true)
             .maxAge(3600);
     }

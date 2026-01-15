@@ -1,5 +1,6 @@
 package com.mercadolivre.pricemonitor.controller;
 
+import com.mercadolivre.pricemonitor.model.PriceHistory;
 import com.mercadolivre.pricemonitor.model.Product;
 import com.mercadolivre.pricemonitor.scheduler.PriceCheckScheduler;
 import com.mercadolivre.pricemonitor.service.ProductService;
@@ -17,11 +18,12 @@ import java.util.Map;
  * REST Controller for Product operations.
  * 
  * Endpoints:
- * - GET  /api/products          - List all products
- * - GET  /api/products/{id}     - Get product by ID
- * - POST /api/products          - Add new product
- * - DELETE /api/products/{id}   - Remove product
- * - POST /api/products/refresh  - Trigger manual price update
+ * - GET  /api/products              - List all products
+ * - GET  /api/products/{id}         - Get product by ID
+ * - GET  /api/products/{id}/history - Get price history for a product
+ * - POST /api/products              - Add new product
+ * - DELETE /api/products/{id}       - Remove product
+ * - POST /api/products/refresh      - Trigger manual price update
  */
 @RestController
 @RequestMapping("/api/products")
@@ -106,6 +108,36 @@ public class ProductController {
     }
 
     /**
+     * Get price history for a specific product.
+     */
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<PriceHistory>> getPriceHistoryByProductId(@PathVariable Long id) {
+        try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            var productOpt = productService.getProductById(id);
+            if (productOpt.isEmpty()) {
+                log.warn("❌ Product not found when fetching history, ID: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Verify product belongs to the authenticated user
+            if (!productOpt.get().getUserId().equals(userId)) {
+                log.warn("❌ Unauthorized: User {} trying to access history for product {}", userId, id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            List<PriceHistory> history = productService.getPriceHistory(id);
+            log.info("✅ Fetched price history for product {}", id);
+            return ResponseEntity.ok(history);
+
+        } catch (Exception e) {
+            log.error("❌ Error fetching price history for product id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Remove a product from monitoring.
      */
     @DeleteMapping("/{id}")
@@ -163,6 +195,53 @@ public class ProductController {
         } catch (Exception e) {
             log.error("Error fetching products with drops", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update notification preferences for a product.
+     * 
+     * Request body: {
+     *   "notifyOnPriceDrop": true,
+     *   "notifyOnPriceIncrease": true
+     * }
+     */
+    @PutMapping("/{id}/notifications")
+    public ResponseEntity<?> updateNotificationPreferences(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> preferences) {
+        try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            var product = productService.getProductById(id);
+            if (product.isEmpty()) {
+                log.warn("❌ Product not found with ID: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Verify product belongs to the authenticated user
+            if (!product.get().getUserId().equals(userId)) {
+                log.warn("❌ Unauthorized: User {} trying to update product {} from user {}", 
+                    userId, id, product.get().getUserId());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            Product prod = product.get();
+            if (preferences.containsKey("notifyOnPriceDrop")) {
+                prod.setNotifyOnPriceDrop(preferences.get("notifyOnPriceDrop"));
+            }
+            if (preferences.containsKey("notifyOnPriceIncrease")) {
+                prod.setNotifyOnPriceIncrease(preferences.get("notifyOnPriceIncrease"));
+            }
+            
+            productService.updateProduct(prod);
+            log.info("✅ Notification preferences updated for product {}", id);
+            return ResponseEntity.ok(prod);
+            
+        } catch (Exception e) {
+            log.error("❌ Error updating notification preferences for product {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update notification preferences"));
         }
     }
 }
