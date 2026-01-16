@@ -42,6 +42,7 @@ public class AuthController {
             response.setId(user.getId());
             response.setEmail(user.getEmail());
             response.setFullName(user.getFullName());
+            response.setEmailVerified(user.getEmailVerified());
             
             log.info("✅ Registro bem-sucedido: {}", user.getEmail());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -81,6 +82,7 @@ public class AuthController {
             response.setId(user.getId());
             response.setEmail(user.getEmail());
             response.setFullName(user.getFullName());
+            response.setEmailVerified(user.getEmailVerified());
             
             log.info("✅ Login bem-sucedido: {}", user.getEmail());
             return ResponseEntity.ok(response);

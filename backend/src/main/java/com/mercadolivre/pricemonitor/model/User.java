@@ -27,6 +27,15 @@ public class User {
     @Column(nullable = false)
     private String fullName;
     
+    @Column(name = "email_verified", nullable = false)
+    private Boolean emailVerified = false;
+    
+    @Column(name = "verification_token")
+    private String verificationToken;
+    
+    @Column(name = "verification_token_expires")
+    private LocalDateTime verificationTokenExpires;
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     

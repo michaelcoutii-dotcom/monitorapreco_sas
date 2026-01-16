@@ -28,6 +28,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         
+        <!-- Spring Boot Actuator (Health Checks & Monitoring) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        
         <!-- Spring Boot WebFlux (for WebClient) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -70,6 +76,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        
+        <!-- Spring Boot Mail (Gmail SMTP) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         
         <!-- JWT (JJWT) -->

@@ -1,58 +1,37 @@
 package com.mercadolivre.pricemonitor.service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
- * Service for sending email notifications using Resend API.
- * 
- * Resend is a modern email API that's easy to use and has a generous free tier.
- * Free: 100 emails/day, 3000 emails/month
+ * Service for sending email notifications using Gmail SMTP.
  */
 @Service
 @Slf4j
 public class EmailService {
 
-    private final RestTemplate restTemplate;
-    private final String apiKey;
-    private final String fromEmail;
-    private final String notificationEmail;
-    private final boolean enabled;
+    @Autowired
+    private JavaMailSender mailSender;
 
-    private static final String RESEND_API_URL = "https://api.resend.com/emails";
+    @Value("${mail.from.name:MonitoraPreço}")
+    private String fromName;
 
-    public EmailService(
-            @Value("${resend.api.key:}") String apiKey,
-            @Value("${resend.from.email:onboarding@resend.dev}") String fromEmail,
-            @Value("${notification.email:}") String notificationEmail) {
-        
-        this.restTemplate = new RestTemplate();
-        this.apiKey = apiKey;
-        this.fromEmail = fromEmail;
-        this.notificationEmail = notificationEmail;
-        this.enabled = apiKey != null && !apiKey.isBlank();
-        
-        if (enabled) {
-            log.info("📧 Email service initialized. Notifications will be sent to: {}", notificationEmail);
-        } else {
-            log.warn("📧 Email service disabled. Set resend.api.key to enable notifications.");
-        }
-    }
+    @Value("${mail.from.email}")
+    private String fromEmail;
 
     /**
      * Send a price drop notification email to a specific user.
      */
     public void sendPriceDropNotification(String userEmail, String productName, String productUrl, 
                                           Double oldPrice, Double newPrice) {
-        if (!enabled || userEmail == null || userEmail.isBlank()) {
-            log.debug("Email notifications disabled or no user email configured");
+        if (userEmail == null || userEmail.isBlank()) {
+            log.debug("No user email configured");
             return;
         }
 
@@ -110,8 +89,8 @@ public class EmailService {
      */
     public void sendPriceIncreaseNotification(String userEmail, String productName, String productUrl,
                                               Double oldPrice, Double newPrice) {
-        if (!enabled || userEmail == null || userEmail.isBlank()) {
-            log.debug("Email notifications disabled or no user email configured");
+        if (userEmail == null || userEmail.isBlank()) {
+            log.debug("No user email configured");
             return;
         }
 
@@ -165,37 +144,27 @@ public class EmailService {
     }
 
     /**
-     * Send an email using Resend API.
+     * Send an email using Gmail SMTP.
      */
     private void sendEmail(String to, String subject, String htmlBody) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
+            log.info("📧 Enviando email para: {} via Gmail SMTP...", to);
+            
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true); // true = HTML
+            
+            mailSender.send(message);
+            log.info("📧 ✅ Email enviado com SUCESSO para {}", to);
 
-            Map<String, Object> body = new HashMap<>();
-            body.put("from", fromEmail);
-            body.put("to", List.of(to));
-            body.put("subject", subject);
-            body.put("html", htmlBody);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                RESEND_API_URL,
-                HttpMethod.POST,
-                request,
-                String.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("📧 Email sent successfully to {}", to);
-            } else {
-                log.error("📧 Failed to send email. Status: {}", response.getStatusCode());
-            }
-
+        } catch (MessagingException e) {
+            log.error("📧 ❌ Erro ao enviar email: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("📧 Error sending email: {}", e.getMessage());
+            log.error("📧 ❌ Erro inesperado ao enviar email: {} - {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -210,9 +179,66 @@ public class EmailService {
     }
 
     /**
-     * Check if email service is enabled.
+     * Check if email service is enabled (always true with Gmail SMTP).
      */
     public boolean isEnabled() {
-        return enabled;
+        return true;
+    }
+
+    /**
+     * Send email verification link.
+     */
+    public void sendVerificationEmail(String userEmail, String fullName, String verificationToken, String frontendUrl) {
+        String verificationLink = frontendUrl + "verify-email?token=" + verificationToken;
+        
+        // Sempre loga o link para debug
+        log.info("📧 [DEBUG] Link de verificação: {}", verificationLink);
+
+        String subject = "✉️ Confirme seu email - MonitoraPreço";
+        
+        String htmlBody = String.format("""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #1e293b 0%%, #0f172a 100%%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">MonitoraPreço</h1>
+                    <p style="color: #94a3b8; margin: 10px 0 0 0;">Inteligência Competitiva</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
+                    <h2 style="color: #333; margin-top: 0;">Olá, %s! 👋</h2>
+                    
+                    <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                        Obrigado por se cadastrar no MonitoraPreço! Para ativar sua conta e começar a monitorar seus concorrentes, confirme seu email clicando no botão abaixo:
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            ✉️ Confirmar Email
+                        </a>
+                    </div>
+                    
+                    <p style="color: #888; font-size: 14px;">
+                        Se o botão não funcionar, copie e cole este link no navegador:<br>
+                        <a href="%s" style="color: #f59e0b; word-break: break-all;">%s</a>
+                    </p>
+                    
+                    <p style="color: #888; font-size: 13px; margin-top: 20px;">
+                        ⏰ Este link expira em 24 horas.
+                    </p>
+                </div>
+                
+                <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                    <p style="margin: 0;">Se você não criou esta conta, ignore este email.</p>
+                    <p style="margin: 10px 0 0 0; color: #64748b;">© 2024 MonitoraPreço - Todos os direitos reservados</p>
+                </div>
+            </div>
+            """,
+            fullName.split(" ")[0],
+            verificationLink,
+            verificationLink,
+            verificationLink
+        );
+
+        sendEmail(userEmail, subject, htmlBody);
+        log.info("📧 Verification email sent to {}", userEmail);
     }
 }

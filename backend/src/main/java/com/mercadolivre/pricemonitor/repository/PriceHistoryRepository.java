@@ -25,4 +25,9 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     @Modifying
     @Query("DELETE FROM PriceHistory p WHERE p.product.id = :productId")
     void deleteByProductId(@Param("productId") Long productId);
+
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM PriceHistory ph WHERE ph.product.id IN (SELECT p.id FROM Product p WHERE p.userId = :userId)")
+    void deleteByProductUserId(@Param("userId") Long userId);
 }

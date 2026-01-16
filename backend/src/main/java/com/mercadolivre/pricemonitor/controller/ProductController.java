@@ -2,6 +2,8 @@ package com.mercadolivre.pricemonitor.controller;
 
 import com.mercadolivre.pricemonitor.model.PriceHistory;
 import com.mercadolivre.pricemonitor.model.Product;
+import com.mercadolivre.pricemonitor.model.User;
+import com.mercadolivre.pricemonitor.repository.UserRepository;
 import com.mercadolivre.pricemonitor.scheduler.PriceCheckScheduler;
 import com.mercadolivre.pricemonitor.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,10 @@ public class ProductController {
 
     private final ProductService productService;
     private final PriceCheckScheduler scheduler;
+    private final UserRepository userRepository;
+    
+    // Limite de produtos para usuários não verificados (plano gratuito)
+    private static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
 
     /**
      * Get all monitored products for authenticated user.
@@ -70,6 +76,8 @@ public class ProductController {
      * Add a new product to monitor.
      * 
      * Request body: { "url": "https://mercadolivre.com.br/..." }
+     * 
+     * Restriction: Unverified users can only monitor up to 2 products.
      */
     @PostMapping
     public ResponseEntity<?> addProduct(@RequestBody Map<String, String> request) {
@@ -80,6 +88,33 @@ public class ProductController {
             if (url == null || url.isBlank()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "URL is required"));
+            }
+
+            // Check if user email is verified
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Usuário não encontrado"));
+            }
+
+            // Check product limit for unverified users (plano gratuito)
+            if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+                List<Product> currentProducts = productService.getProductsByUserId(userId);
+                if (currentProducts.size() >= UNVERIFIED_USER_PRODUCT_LIMIT) {
+                    log.warn("⚠️ Unverified user {} tried to add more than {} products", 
+                            user.getEmail(), UNVERIFIED_USER_PRODUCT_LIMIT);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of(
+                                "error", "Limite de produtos atingido",
+                                "message", String.format(
+                                    "O plano Gratuito permite monitorar até %d produtos. " +
+                                    "Verifique seu email para ativar sua conta!",
+                                    UNVERIFIED_USER_PRODUCT_LIMIT),
+                                "code", "EMAIL_NOT_VERIFIED",
+                                "currentCount", currentProducts.size(),
+                                "limit", UNVERIFIED_USER_PRODUCT_LIMIT
+                            ));
+                }
             }
 
             log.info("➕ Adding new product for userId: {}, URL: {}", userId, url);

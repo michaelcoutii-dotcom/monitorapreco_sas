@@ -39,7 +39,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/auth/health").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/email/verify").permitAll()
                 .requestMatchers(HttpMethod.GET, "/actuator/**").permitAll()
+                
+                // Mercado Livre OAuth endpoints (public)
+                .requestMatchers(HttpMethod.GET, "/api/auth/mercadolivre/**").permitAll()
                 
                 // Scraper endpoint (public para testes)
                 .requestMatchers(HttpMethod.POST, "/api/scrape").permitAll()
