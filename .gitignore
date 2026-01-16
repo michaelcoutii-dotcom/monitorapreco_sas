@@ -16,6 +16,7 @@ build/
 
 # Environment
 .env
+.env.local
 *.env.local
 
 # Database
@@ -32,4 +33,19 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Windows reserved names
 nul
+NUL
+
+# Java crash logs
+hs_err_pid*.log
+replay_pid*.log
+
+# Debug files
+failed_scrape.png
+debug_*.py
+
+# Backups (keep .gitignore inside)
+backups/*
+!backups/.gitignore
