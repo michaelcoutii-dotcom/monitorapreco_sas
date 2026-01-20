@@ -1,7 +1,4 @@
 function ConfirmModal({ open, title, message, onConfirm, onCancel }) {
-
-  console.log('[DEBUG] ConfirmModal rendered with open =', open);
-
   if (!open) return null
 
   return (
@@ -36,19 +33,13 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel }) {
         {/* Footer */}
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
           <button
-            onClick={() => {
-              console.log('[DEBUG] ConfirmModal onCancel clicked');
-              onCancel();
-            }}
+            onClick={onCancel}
             className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all duration-150 bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer active:scale-95"
           >
             Cancelar
           </button>
           <button
-            onClick={() => {
-              console.log('[DEBUG] ConfirmModal onConfirm clicked');
-              onConfirm();
-            }}
+            onClick={onConfirm}
             className="flex-1 px-4 py-2.5 rounded-xl font-medium bg-red-500 hover:bg-red-600 text-white transition-all duration-150 shadow-lg hover:shadow-xl cursor-pointer active:scale-95"
           >
             Remover

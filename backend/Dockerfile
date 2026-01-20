@@ -1,26 +1,34 @@
-# Java Backend - Dockerfile
-FROM eclipse-temurin:21-jdk-alpine AS builder
+# Java Backend - Dockerfile (Multi-stage Build)
+# Clone and run: docker-compose up -d --build
+
+# ===== STAGE 1: Build =====
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Copy Maven files
+# Copy pom.xml and source
 COPY pom.xml .
 COPY src ./src
 
-# Install Maven and build
-RUN apk add --no-cache maven && \
-    mvn package -DskipTests
+# Build the application (download deps + compile in one step for reliability)
+RUN mvn clean package -DskipTests -B
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+# ===== STAGE 2: Runtime =====
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy JAR from builder
+# Copy JAR from builder stage
 COPY --from=builder /app/target/*.jar app.jar
 
-# Expose port
-EXPOSE 8080
+# Create data directory
+RUN mkdir -p /app/data
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Expose port
+EXPOSE 8081
+
+# JVM optimizations for containers
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+UseStringDeduplication"
+
+# Run the application with optimized settings
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

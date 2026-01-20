@@ -1,5 +1,6 @@
 package com.mercadolivre.pricemonitor.controller;
 
+import com.mercadolivre.pricemonitor.dto.AnalyticsResponse;
 import com.mercadolivre.pricemonitor.model.PriceHistory;
 import com.mercadolivre.pricemonitor.model.Product;
 import com.mercadolivre.pricemonitor.model.User;
@@ -36,9 +37,6 @@ public class ProductController {
     private final ProductService productService;
     private final PriceCheckScheduler scheduler;
     private final UserRepository userRepository;
-    
-    // Limite de produtos para usuários não verificados (plano gratuito)
-    private static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
 
     /**
      * Get all monitored products for authenticated user.
@@ -100,19 +98,19 @@ public class ProductController {
             // Check product limit for unverified users (plano gratuito)
             if (!Boolean.TRUE.equals(user.getEmailVerified())) {
                 List<Product> currentProducts = productService.getProductsByUserId(userId);
-                if (currentProducts.size() >= UNVERIFIED_USER_PRODUCT_LIMIT) {
+                if (currentProducts.size() >= ProductService.UNVERIFIED_USER_PRODUCT_LIMIT) {
                     log.warn("⚠️ Unverified user {} tried to add more than {} products", 
-                            user.getEmail(), UNVERIFIED_USER_PRODUCT_LIMIT);
+                            user.getEmail(), ProductService.UNVERIFIED_USER_PRODUCT_LIMIT);
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(Map.of(
                                 "error", "Limite de produtos atingido",
                                 "message", String.format(
                                     "O plano Gratuito permite monitorar até %d produtos. " +
                                     "Verifique seu email para ativar sua conta!",
-                                    UNVERIFIED_USER_PRODUCT_LIMIT),
+                                    ProductService.UNVERIFIED_USER_PRODUCT_LIMIT),
                                 "code", "EMAIL_NOT_VERIFIED",
                                 "currentCount", currentProducts.size(),
-                                "limit", UNVERIFIED_USER_PRODUCT_LIMIT
+                                "limit", ProductService.UNVERIFIED_USER_PRODUCT_LIMIT
                             ));
                 }
             }
@@ -277,6 +275,57 @@ public class ProductController {
             log.error("❌ Error updating notification preferences for product {}: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to update notification preferences"));
+        }
+    }
+
+    /**
+     * Get price analytics for the authenticated user.
+     * 
+     * Query params:
+     * - days: Number of days to analyze (default 30, max 90)
+     */
+    @GetMapping("/analytics")
+    public ResponseEntity<?> getAnalytics(@RequestParam(defaultValue = "30") int days) {
+        try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.info("📊 Fetching analytics for userId: {}, days: {}", userId, days);
+            
+            // Limit days to max 90
+            days = Math.min(days, 90);
+            
+            AnalyticsResponse analytics = productService.getAnalytics(userId, days);
+            return ResponseEntity.ok(analytics);
+            
+        } catch (Exception e) {
+            log.error("❌ Error fetching analytics: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch analytics"));
+        }
+    }
+
+    /**
+     * Clean up duplicate price history entries (same price as previous entry).
+     * This removes redundant records that don't represent actual price changes.
+     */
+    @PostMapping("/cleanup-history")
+    public ResponseEntity<?> cleanupDuplicateHistory() {
+        try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.info("🧹 Cleaning up duplicate history for userId: {}", userId);
+            
+            int deleted = productService.cleanupDuplicateHistory();
+            
+            log.info("🧹 Deleted {} duplicate history entries", deleted);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "deletedCount", deleted,
+                "message", String.format("Removidos %d registros duplicados", deleted)
+            ));
+            
+        } catch (Exception e) {
+            log.error("❌ Error cleaning up history: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to cleanup history"));
         }
     }
 }

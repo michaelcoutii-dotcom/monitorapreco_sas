@@ -42,6 +42,19 @@ public class User {
     @Column(name = "reset_password_token_expires")
     private LocalDateTime resetPasswordTokenExpires;
     
+    // Telegram integration
+    @Column(name = "telegram_chat_id")
+    private String telegramChatId;
+    
+    @Column(name = "telegram_enabled")
+    private Boolean telegramEnabled = false;
+    
+    @Column(name = "telegram_link_code")
+    private String telegramLinkCode;
+    
+    @Column(name = "telegram_link_expires")
+    private LocalDateTime telegramLinkExpires;
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     

@@ -49,6 +49,9 @@ public class SecurityConfig {
                 // Mercado Livre OAuth endpoints (public)
                 .requestMatchers(HttpMethod.GET, "/api/auth/mercadolivre/**").permitAll()
                 
+                // Telegram webhook (public - called by Telegram servers)
+                .requestMatchers(HttpMethod.POST, "/api/telegram/webhook").permitAll()
+                
                 // Scraper endpoint (public para testes)
                 .requestMatchers(HttpMethod.POST, "/api/scrape").permitAll()
                 

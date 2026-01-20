@@ -1,5 +1,6 @@
 package com.mercadolivre.pricemonitor.service;
 
+import com.mercadolivre.pricemonitor.dto.AnalyticsResponse;
 import com.mercadolivre.pricemonitor.dto.ScrapeResponse;
 import com.mercadolivre.pricemonitor.model.PriceHistory;
 import com.mercadolivre.pricemonitor.model.Product;
@@ -13,9 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * Service containing the core business logic for product price monitoring.
@@ -32,6 +33,7 @@ public class ProductService {
     private final ScraperService scraperService;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final TelegramService telegramService;
 
     public List<Product> getProductsByUserId(Long userId) {
         log.debug("Fetching products for userId: {}", userId);
@@ -52,6 +54,62 @@ public class ProductService {
                 .orElse(List.of());
     }
 
+    /**
+     * Remove duplicate price history entries (same price as previous).
+     * Processes all history records and removes duplicates in Java.
+     * Returns the number of deleted records.
+     */
+    @Transactional
+    public int cleanupDuplicateHistory() {
+        List<PriceHistory> allHistory = priceHistoryRepository.findAllOrderByProductAndDate();
+        
+        if (allHistory.isEmpty()) {
+            return 0;
+        }
+        
+        List<Long> idsToDelete = new ArrayList<>();
+        Long currentProductId = null;
+        Double lastPrice = null;
+        
+        for (PriceHistory ph : allHistory) {
+            Long productId = ph.getProduct().getId();
+            
+            // Novo produto - resetar lastPrice
+            if (!productId.equals(currentProductId)) {
+                currentProductId = productId;
+                lastPrice = ph.getPrice();
+                continue; // Primeiro registro do produto, manter
+            }
+            
+            // Mesmo produto - verificar se preço é igual ao anterior
+            if (lastPrice != null && ph.getPrice() != null 
+                && Math.abs(lastPrice - ph.getPrice()) < 0.01) {
+                // Preço igual ao anterior - marcar para deletar
+                idsToDelete.add(ph.getId());
+            } else {
+                // Preço diferente - atualizar lastPrice
+                lastPrice = ph.getPrice();
+            }
+        }
+        
+        if (idsToDelete.isEmpty()) {
+            log.info("🧹 Nenhum registro duplicado encontrado");
+            return 0;
+        }
+        
+        // Deletar em batches de 1000 para evitar problemas com queries muito grandes
+        int totalDeleted = 0;
+        int batchSize = 1000;
+        for (int i = 0; i < idsToDelete.size(); i += batchSize) {
+            List<Long> batch = idsToDelete.subList(i, Math.min(i + batchSize, idsToDelete.size()));
+            int deleted = priceHistoryRepository.deleteByIds(batch);
+            totalDeleted += deleted;
+        }
+        
+        log.info("🧹 Removidos {} registros duplicados de histórico", totalDeleted);
+        return totalDeleted;
+    }
+
     @Transactional
     public void removeProduct(Long id) {
         priceHistoryRepository.deleteByProductId(id);
@@ -59,8 +117,8 @@ public class ProductService {
         log.info("Removed product with ID: {}", id);
     }
 
-    // Limite de produtos para usuários não verificados
-    private static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
+    // Limite de produtos para usuários não verificados (compartilhado com controller)
+    public static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
 
     /**
      * Adds a new product to monitor. Scrapes the initial price immediately using a blocking call.
@@ -124,6 +182,7 @@ public class ProductService {
     /**
      * Updates a single product's data based on a fresh scrape.
      * This method is transactional and handles all database and notification logic.
+     * Only saves to price history when the price actually changes.
      */
     @Transactional
     public void updateSingleProduct(Product product, ScrapeResponse scrapeData) {
@@ -134,6 +193,15 @@ public class ProductService {
 
         Double oldPrice = product.getCurrentPrice();
         Double newPrice = scrapeData.getPrice();
+        
+        // Verificar se o preço realmente mudou (com tolerância para evitar falsos positivos)
+        boolean priceChanged = false;
+        if (oldPrice == null && newPrice != null) {
+            priceChanged = true; // Primeira vez que tem preço
+        } else if (oldPrice != null && newPrice != null) {
+            // Só considera mudança se diferença for maior que 0.01 (1 centavo)
+            priceChanged = Math.abs(oldPrice - newPrice) >= 0.01;
+        }
 
         product.setLastPrice(oldPrice);
         product.setCurrentPrice(newPrice);
@@ -145,13 +213,20 @@ public class ProductService {
 
         productRepository.save(product);
 
-        PriceHistory history = new PriceHistory(product, newPrice);
-        priceHistoryRepository.save(history);
+        // Só salva no histórico se o preço REALMENTE mudou
+        if (priceChanged) {
+            PriceHistory history = new PriceHistory(product, newPrice);
+            priceHistoryRepository.save(history);
+            log.info("📊 Histórico salvo: '{}' - R$ {} → R$ {}", product.getName(), oldPrice, newPrice);
+        }
 
-        log.info("Updated product '{}': Old Price: R$ {}, New Price: R$ {}", product.getName(), oldPrice, newPrice);
+        log.info("✅ Verificado '{}': R$ {} ({})", 
+            product.getName(), newPrice, priceChanged ? "MUDOU" : "igual");
         
-        // Handle notifications
-        checkPriceAndNotify(product, oldPrice, newPrice);
+        // Handle notifications (só notifica se mudou)
+        if (priceChanged) {
+            checkPriceAndNotify(product, oldPrice, newPrice);
+        }
     }
 
     /**
@@ -188,11 +263,15 @@ public class ProductService {
             logPriceChange("PRICE DROP 🔻", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceDrop()) {
                 emailService.sendPriceDropNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
+                // Also send Telegram notification
+                telegramService.sendPriceDropNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
             }
         } else if (newPrice > oldPrice) {
             logPriceChange("PRICE INCREASE 📈", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceIncrease()) {
                 emailService.sendPriceIncreaseNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
+                // Also send Telegram notification
+                telegramService.sendPriceIncreaseNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
             }
         }
     }
@@ -221,5 +300,105 @@ public class ProductService {
     @Transactional
     public Product updateProduct(Product product) {
         return productRepository.save(product);
+    }
+
+    /**
+     * Get price analytics for a user.
+     * Includes: changes per day, per hour, top changing products, etc.
+     */
+    public AnalyticsResponse getAnalytics(Long userId, int days) {
+        LocalDateTime since = LocalDateTime.now().minusDays(days);
+        
+        // Total de mudanças
+        Long totalChanges = priceHistoryRepository.countTotalChangesForUser(userId, since);
+        
+        // Total de produtos
+        List<Product> products = productRepository.findByUserId(userId);
+        
+        // Mudanças por data
+        List<Object[]> changesByDateRaw = priceHistoryRepository.countChangesByDateForUser(userId, since);
+        List<AnalyticsResponse.DailyChange> changesByDate = (changesByDateRaw != null ? changesByDateRaw.stream() : java.util.stream.Stream.<Object[]>empty())
+                .map(row -> AnalyticsResponse.DailyChange.builder()
+                        .date(row[0].toString())
+                        .count(((Number) row[1]).longValue())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Mudanças por hora
+        List<Object[]> changesByHourRaw = priceHistoryRepository.countChangesByHourForUser(userId, since);
+        Map<Integer, Long> changesByHour = new LinkedHashMap<>();
+        // Inicializar todas as horas com 0
+        for (int i = 0; i < 24; i++) {
+            changesByHour.put(i, 0L);
+        }
+        int peakHour = 0;
+        long maxHourCount = 0;
+        if (changesByHourRaw != null) {
+            for (Object[] row : changesByHourRaw) {
+                int hour = ((Number) row[0]).intValue();
+                long count = ((Number) row[1]).longValue();
+                changesByHour.put(hour, count);
+                if (count > maxHourCount) {
+                    maxHourCount = count;
+                    peakHour = hour;
+                }
+            }
+        }
+        
+        // Mudanças por dia da semana
+        String[] dayNames = {"", "Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"};
+        List<Object[]> changesByDowRaw = priceHistoryRepository.countChangesByDayOfWeekForUser(userId, since);
+        Map<String, Long> changesByDayOfWeek = new LinkedHashMap<>();
+        // Inicializar todos os dias com 0
+        for (int i = 1; i <= 7; i++) {
+            changesByDayOfWeek.put(dayNames[i], 0L);
+        }
+        String peakDayOfWeek = "Segunda";
+        long maxDayCount = 0;
+        if (changesByDowRaw != null) {
+            for (Object[] row : changesByDowRaw) {
+                int dow = ((Number) row[0]).intValue();
+                long count = ((Number) row[1]).longValue();
+                String dayName = dayNames[dow];
+                changesByDayOfWeek.put(dayName, count);
+                if (count > maxDayCount) {
+                    maxDayCount = count;
+                    peakDayOfWeek = dayName;
+                }
+            }
+        }
+        
+        // Top produtos com mais mudanças
+        List<Object[]> topProductsRaw = priceHistoryRepository.countChangesByProductForUser(userId, since);
+        List<AnalyticsResponse.ProductChangeRank> topChangingProducts = (topProductsRaw != null ? topProductsRaw.stream() : java.util.stream.Stream.<Object[]>empty())
+                .limit(10)
+                .map(row -> AnalyticsResponse.ProductChangeRank.builder()
+                        .productId(((Number) row[0]).longValue())
+                        .productName(truncate((String) row[1], 50))
+                        .changeCount(((Number) row[2]).longValue())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Média de mudanças por dia
+        double avgChangesPerDay = days > 0 && totalChanges != null ? (double) totalChanges / days : 0;
+        
+        return AnalyticsResponse.builder()
+                .totalChanges(totalChanges != null ? totalChanges : 0L)
+                .totalProducts(products.size())
+                .avgChangesPerDay(Math.round(avgChangesPerDay * 10) / 10.0)
+                .changesByDate(changesByDate)
+                .changesByHour(changesByHour)
+                .changesByDayOfWeek(changesByDayOfWeek)
+                .topChangingProducts(topChangingProducts)
+                .peakHour(peakHour)
+                .peakDayOfWeek(peakDayOfWeek)
+                .build();
+    }
+    
+    private String truncate(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength - 3) + "...";
     }
 }

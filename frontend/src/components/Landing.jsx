@@ -21,13 +21,13 @@ export default function Landing() {
     },
     {
       icon: '📊',
-      title: 'Histórico e Análise',
-      description: 'Visualize gráficos detalhados e identifique tendências para melhorar sua estratégia de preços.'
+      title: 'Analytics Avançado',
+      description: 'Visualize gráficos detalhados, tendências de preços e histórico completo para tomar decisões estratégicas.'
     },
     {
-      icon: '🔔',
-      title: 'Alertas Personalizados',
-      description: 'Configure notificações por queda percentual ou valor em R$. Você decide quando quer ser alertado.'
+      icon: '✈️',
+      title: 'Alertas no Telegram',
+      description: 'Receba notificações instantâneas no Telegram. Saiba de mudanças de preço direto no seu celular!'
     },
     {
       icon: '📧',
@@ -35,9 +35,9 @@ export default function Landing() {
       description: 'Receba relatórios resumidos com mudanças de preços. Fique informado mesmo quando estiver offline.'
     },
     {
-      icon: '📱',
-      title: 'Acesso em Qualquer Lugar',
-      description: 'Interface responsiva que funciona perfeitamente em desktop, tablet e celular.'
+      icon: '🔔',
+      title: 'Alertas Personalizados',
+      description: 'Configure notificações por queda percentual ou valor em R$. Você decide quando quer ser alertado.'
     },
     {
       icon: '🔒',
@@ -364,6 +364,8 @@ export default function Landing() {
               <ul className="space-y-3 text-left text-slate-300 mb-6">
                 <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Até 50 produtos</li>
                 <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Alertas avançados</li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> <span className="text-amber-400 font-medium">Telegram Instantâneo</span></li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> <span className="text-amber-400 font-medium">Analytics Completo</span></li>
                 <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Histórico de 30 dias</li>
                 <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Suporte prioritário</li>
               </ul>

@@ -79,7 +79,7 @@ function AddProduct({ onAdd, adding }) {
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Input */}
           <div className="flex-1 relative group">
-            <label className="block text-sm font-semibold text-gray-800 mb-2">
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
               🔗 URL do Produto
             </label>
             <div className="relative">
@@ -147,9 +147,9 @@ function AddProduct({ onAdd, adding }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="text-sm text-slate-300">
-              <p className="font-semibold mb-1 text-amber-400">ℹ️ Informações Importantes:</p>
-              <p>✅ Backend: <strong className="text-white">http://localhost:8081</strong></p>
-              <p>✅ Scraper Python: <strong className="text-white">http://localhost:8000</strong></p>
+              <p className="font-semibold mb-1 text-amber-400">ℹ️ Dica:</p>
+              <p>Cole a URL completa do produto do Mercado Livre</p>
+              <p className="text-slate-400 text-xs mt-1">Ex: https://www.mercadolivre.com.br/produto-xyz</p>
             </div>
           </div>
         </div>

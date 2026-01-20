@@ -105,6 +105,13 @@ export default function OnboardingModal({ onClose, userName }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        <span className="text-2xl">✈️</span>
+                        <div>
+                            <p className="text-sm text-white font-medium">Telegram Instantâneo</p>
+                            <p className="text-xs text-slate-400">Alertas direto no celular</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
                         <span className="text-2xl">🔔</span>
                         <div>
                             <p className="text-sm text-white font-medium">Sininho no app</p>
@@ -128,6 +135,9 @@ export default function OnboardingModal({ onClose, userName }) {
                     <p className="text-slate-400 text-sm mt-1">
                         Fique sempre à frente da concorrência
                     </p>
+                    <div className="mt-4 pt-4 border-t border-amber-500/20">
+                        <p className="text-xs text-slate-500">💡 Dica: Confira o <span className="text-amber-400 font-medium">Analytics</span> para ver gráficos e tendências dos seus produtos!</p>
+                    </div>
                 </div>
             )
         }

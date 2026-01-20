@@ -17,8 +17,8 @@ from datetime import datetime
 from playwright.async_api import async_playwright, Playwright, Browser, Page, TimeoutError as PlaywrightTimeout
 
 # List of resource types to block for faster scraping
+# NOTE: Não bloquear 'image' para poder pegar a URL da imagem do produto
 BLOCKED_RESOURCE_TYPES = [
-  "image",
   "stylesheet",
   "font",
   "media",
@@ -29,17 +29,17 @@ BLOCKED_RESOURCE_TYPES = [
   "imageset",
 ]
 
-# Retry configuration
+# Retry configuration (otimizado para velocidade)
 MAX_RETRIES = 2
-INITIAL_RETRY_DELAY = 0.3  # seconds (otimizado para velocidade)
+INITIAL_RETRY_DELAY = 0.2  # seconds
 
-# Pool de User-Agents realistas (Chrome Windows atualizado)
+# Pool de User-Agents realistas (Chrome Windows atualizado - Jan 2026)
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
 ]
 
 # Contador de requisições para estatísticas
@@ -132,12 +132,10 @@ class Scraper:
         await page.route("**/*", lambda route: route.abort() if route.request.resource_type in BLOCKED_RESOURCE_TYPES else route.continue_())
 
     @classmethod
-    async def scrape_mercadolivre(cls, url: str, timeout: int = 8000) -> dict | None:
+    async def scrape_mercadolivre(cls, url: str, timeout: int = 6000) -> dict | None:
         """
         Scrapes product data from a Mercado Livre URL using the persistent browser.
-        Optimized for speed with reduced timeouts and faster selectors.
-        Tries multiple selector combinations for robustness.
-        Implements retry logic with exponential backoff.
+        Optimized for MAXIMUM SPEED with minimal timeouts and direct selectors.
         """
         for attempt in range(MAX_RETRIES):
             result = await cls._scrape_attempt(url, timeout, attempt)
@@ -182,9 +180,8 @@ class Scraper:
             print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
-            # DELAY HUMANO: espera de 1-1.5s (equilíbrio entre velocidade e segurança)
-            human_delay = random.randint(1000, 1500)
-            await page.wait_for_timeout(human_delay)
+            # DELAY MÍNIMO: 300-500ms (mais rápido, ainda seguro)
+            await page.wait_for_timeout(random.randint(300, 500))
             
             # DETECÇÃO DE BLOQUEIO/CAPTCHA - melhorada para evitar falsos positivos
             page_content = await page.content()
@@ -199,89 +196,64 @@ class Scraper:
                 "access denied"
             ]
             
-            is_blocked = False
-            for indicator in real_block_indicators:
-                # Verificar no título (mais confiável)
-                if indicator.lower() in page_title.lower():
-                    print(f"[WARN] ⚠️ Bloqueio detectado no título: '{indicator}'")
-                    is_blocked = True
-                    break
-                # Verificar no body text (não em atributos/classes)
-                body_text = await page.inner_text("body") if await page.query_selector("body") else ""
-                if indicator.lower() in body_text.lower()[:500]:  # Só nos primeiros 500 chars
-                    print(f"[WARN] ⚠️ Bloqueio detectado no conteúdo: '{indicator}'")
-                    is_blocked = True
-                    break
-            
+            # Verificação rápida de bloqueio (só no título)
+            is_blocked = any(ind.lower() in page_title.lower() for ind in real_block_indicators)
             if is_blocked:
+                print(f"[WARN] ⚠️ Bloqueio detectado no título")
                 ScraperStats.log_failure(blocked=True)
                 return None
 
-            # Try multiple selectors for price (otimizado - ordem de prioridade)
-            price_selectors = [
-                # Seletores primários (mais rápidos e estáveis)
-                ".andes-money-amount__fraction",
-                "[data-testid='price-value']",
-                ".price-tag-fraction",
-            ]
-            
+            # Extração rápida de preço (seletor único mais comum)
             price = None
-            price_element = None
-            
-            for selector in price_selectors:
-                try:
-                    price_element = await page.query_selector(selector)
-                    if price_element:
-                        break
-                except:
-                    continue
+            price_element = await page.query_selector(".andes-money-amount__fraction")
             
             if price_element:
                 price_int = await price_element.inner_text()
-                # Try to find cents
                 price_cents_element = await page.query_selector(".andes-money-amount__cents")
-                price_cents = "00"
-                if price_cents_element:
-                    price_cents = await price_cents_element.inner_text()
-                
-                price_str = f"{price_int},{price_cents}"
-                price = normalize_price(price_str)
-                print(f"[DEBUG] Preço extraído: R$ {price}")
+                price_cents = await price_cents_element.inner_text() if price_cents_element else "00"
+                price = normalize_price(f"{price_int},{price_cents}")
 
-            # Try multiple selectors for title (otimizado)
-            title_selectors = [
-                "h1.ui-pdp-title",
-                "h1",
-            ]
-            
+            # Extração rápida de título
             title = None
-            for selector in title_selectors:
-                try:
-                    title_element = await page.query_selector(selector)
-                    if title_element:
-                        title = await title_element.inner_text()
-                        title = title.strip()
-                        if title and len(title) > 5:  # Sanity check
-                            break
-                except:
-                    continue
+            title_element = await page.query_selector("h1")
+            if title_element:
+                title = (await title_element.inner_text()).strip()
 
-            # Try multiple selectors for image (otimizado)
+            # Extração de imagem - múltiplos seletores para garantir
             image_url = None
             image_selectors = [
-                "figure.ui-pdp-gallery__figure img",
-                "img[src*='mlstatic']",
+                "figure.ui-pdp-gallery__figure img[src*='http']",
+                ".ui-pdp-image--gallery img[src*='http']",
+                "img.ui-pdp-image[src*='mlstatic']",
+                "img[data-zoom][src*='http']",
+                "img[src*='mlstatic.com']",
             ]
             
             for selector in image_selectors:
                 try:
                     image_element = await page.query_selector(selector)
                     if image_element:
-                        image_url = await image_element.get_attribute("src")
-                        if image_url:
+                        src = await image_element.get_attribute("src")
+                        # Verificar se é uma URL válida de imagem
+                        if src and src.startswith("http") and "mlstatic" in src:
+                            image_url = src
+                            print(f"[DEBUG] 📷 Imagem encontrada: {image_url[:60]}...")
                             break
                 except:
                     continue
+            
+            # Fallback: tentar pegar qualquer imagem grande do produto
+            if not image_url:
+                try:
+                    all_images = await page.query_selector_all("img[src*='mlstatic']")
+                    for img in all_images[:5]:
+                        src = await img.get_attribute("src")
+                        if src and "http" in src and ("D_NQ" in src or "O_" in src):
+                            image_url = src
+                            print(f"[DEBUG] 📷 Imagem (fallback): {image_url[:60]}...")
+                            break
+                except:
+                    pass
             
             if not title or price is None:
                 print(f"[WARN] Dados incompletos. Título: {title}, Preço: {price}")

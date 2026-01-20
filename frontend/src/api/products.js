@@ -143,3 +143,122 @@ export const getPriceHistory = async (productId) => {
 
     return response.json();
 };
+
+/**
+ * Fetches price analytics for the authenticated user.
+ * @param {number} days - Number of days to analyze (default 30).
+ * @returns {Promise<any>} A promise that resolves to analytics data.
+ */
+export const getAnalytics = async (days = 30) => {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('No authentication token found.');
+    }
+
+    const response = await fetch(`${getApiUrl()}/api/products/analytics?days=${days}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch analytics.');
+    }
+
+    return response.json();
+};
+
+/**
+ * Cleans up duplicate price history entries.
+ * @returns {Promise<any>} A promise that resolves to cleanup result.
+ */
+export const cleanupHistory = async () => {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('No authentication token found.');
+    }
+
+    const response = await fetch(`${getApiUrl()}/api/products/cleanup-history`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to cleanup history.');
+    }
+
+    return response.json();
+};
+
+// ========================================
+// Telegram API
+// ========================================
+
+/**
+ * Get Telegram integration status.
+ */
+export const getTelegramStatus = async () => {
+    const token = getAuthToken();
+    if (!token) throw new Error('No authentication token found.');
+
+    const response = await fetch(`${getApiUrl()}/api/telegram/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error('Failed to get Telegram status.');
+    return response.json();
+};
+
+/**
+ * Generate a code to link Telegram account.
+ */
+export const generateTelegramCode = async () => {
+    const token = getAuthToken();
+    if (!token) throw new Error('No authentication token found.');
+
+    const response = await fetch(`${getApiUrl()}/api/telegram/generate-code`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error('Failed to generate Telegram code.');
+    return response.json();
+};
+
+/**
+ * Unlink Telegram account.
+ */
+export const unlinkTelegram = async () => {
+    const token = getAuthToken();
+    if (!token) throw new Error('No authentication token found.');
+
+    const response = await fetch(`${getApiUrl()}/api/telegram/unlink`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error('Failed to unlink Telegram.');
+    return response.json();
+};
+
+/**
+ * Toggle Telegram notifications.
+ */
+export const toggleTelegramNotifications = async (enabled) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('No authentication token found.');
+
+    const response = await fetch(`${getApiUrl()}/api/telegram/toggle`, {
+        method: 'POST',
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled })
+    });
+
+    if (!response.ok) throw new Error('Failed to toggle Telegram notifications.');
+    return response.json();
+};

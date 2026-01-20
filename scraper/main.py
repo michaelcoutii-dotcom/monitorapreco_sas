@@ -215,6 +215,7 @@ async def scrape_product(request: ScrapeRequest):
         try:
             result = await Scraper.scrape_mercadolivre(clean_url)
             if result:
+                print(f"[SCRAPER] 📷 ImageURL: {result.get('imageUrl', 'NENHUMA')[:80] if result.get('imageUrl') else 'NENHUMA'}...")
                 if CACHE_ENABLED:
                     scrape_cache.set(clean_url, result)
                 return ScrapeResponse(**result)

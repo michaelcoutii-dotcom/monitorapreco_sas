@@ -45,11 +45,17 @@
 - ✅ Indicadores de tendência (subiu/desceu)
 
 ### 🔔 Sistema de Notificações
+- ✅ **Telegram** - Alertas instantâneos via bot (@monitoraprecoalert_bot)
 - ✅ **Email** - Receba alertas por email quando preços mudarem
 - ✅ **In-App (Sininho)** - Notificações dentro do sistema
-- ✅ **WhatsApp** - Alertas instantâneos no seu celular
 - ✅ Configuração por produto (queda/aumento)
 - ✅ Preferências personalizáveis
+
+### 📊 Analytics Avançado
+- ✅ Dashboard completo com métricas
+- ✅ Gráficos de evolução de preços
+- ✅ Histórico detalhado com timestamps
+- ✅ Indicadores de tendência (subiu/desceu)
 
 ### 👤 Gestão de Usuários
 - ✅ Registro com verificação de email
@@ -151,15 +157,80 @@ sas_mercado_livre/
 
 ## 📋 Requisitos
 
+### 🐳 Para Rodar com Docker (Recomendado)
+
+| Requisito | Versão |
+|-----------|--------|
+| Docker Desktop | 4.0+ |
+
+**Só isso!** Não precisa instalar Java, Node.js, Python ou MySQL.
+
 ### Para Desenvolvimento Local
 
 | Requisito | Versão |
 |-----------|--------|
-| Java | 17+ |
+| Java | 21+ |
 | Maven | 3.8+ |
-| Node.js | 18+ |
-| Python | 3.9+ |
+| Node.js | 20+ |
+| Python | 3.11+ |
 | MySQL | 8.0 (ou H2 para dev) |
+
+---
+
+## 🚀 Instalação Rápida (Docker)
+
+### 1. Clone o Repositório
+```bash
+git clone https://github.com/seu-usuario/sas_mercado_livre.git
+cd sas_mercado_livre
+```
+
+### 2. Execute o Script de Inicialização
+
+**Windows:**
+```batch
+iniciar.bat
+```
+
+**Linux/Mac:**
+```bash
+chmod +x iniciar.sh
+./iniciar.sh
+```
+
+**Ou manualmente:**
+```bash
+docker-compose up -d --build
+```
+
+### 3. Acesse o Sistema
+
+| Serviço | URL |
+|---------|-----|
+| 🖥️ Frontend | http://localhost |
+| ⚙️ Backend API | http://localhost:8081 |
+| 🔍 Scraper API | http://localhost:8000 |
+| 🗄️ MySQL | localhost:3307 |
+
+### 4. Comandos Úteis
+
+```bash
+# Ver logs em tempo real
+docker-compose logs -f
+
+# Parar todos os containers
+docker-compose down
+
+# Reiniciar um serviço específico
+docker-compose restart backend
+
+# Ver status dos containers
+docker-compose ps
+```
+
+---
+
+## ⚙️ Configuração
 
 ### Variáveis de Ambiente
 
@@ -387,7 +458,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 👨‍💻 Autor
 
-Desenvolvido com ❤️ para ajudar vendedores do Mercado Livre a monitorar a concorrência.
+Desenvolvido  para ajudar vendedores do Mercado Livre a monitorar a concorrência.
 
 ---
 

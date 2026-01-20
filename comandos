@@ -1,5 +1,18 @@
+caso eu mude o proejeto -atualizar o docker 
+
+cd c:\Users\Michael\Desktop\sas_mercado_livre\backend && mvn clean package -DskipTests
+cd c:\Users\Michael\Desktop\sas_mercado_livre\frontend && npm run build
+cd c:\Users\Michael\Desktop\sas_mercado_livre
+docker-compose down
+docker-compose up -d --build
+ 
+ 
+ 
+ 
  C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe main.py == python 
  C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe -m watchgod main.run_server
+
+ C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe main.py
 
     mvn clean package -DskipTests
  java -jar target/price-monitor-1.0.0.jar == java
@@ -13,6 +26,19 @@
   ngrok http 8081
   "C:\Users\Michael\AppData\Local\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe" http 8081
 
+Alertas Instantâneos
+Receba notificações assim que detectarmos qualquer mudança:
+
+📧
+Email na hora
+
+Saiba antes de todo mundo
+
+🔔
+Sininho no app
+
+Histórico de todas as mudanças
+/ precisamos atualizar essa parte que tem o telegram tambem, e na parte de intruçoes assim que faz o cadastro e entra falar no Analyts para o usuario ficar sabendo, e outra na parte antes do login ou cadastro falar tambem do telegram e do analitycs para chamar atençao do usuario.
 
   # Backend (Java)
 cd backend

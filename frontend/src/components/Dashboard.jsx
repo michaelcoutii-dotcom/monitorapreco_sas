@@ -11,6 +11,8 @@ import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import PriceHistoryModal from './PriceHistoryModal';
 import OnboardingModal from './OnboardingModal';
+import AnalyticsDashboard from './AnalyticsDashboard';
+import TelegramSettings from './TelegramSettings';
 import useToasts from '../hooks/useToasts';
 import { AuthContext } from '../context/AuthContext';
 
@@ -28,6 +30,8 @@ export default function Dashboard() {
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
     const [emailVerificationModal, setEmailVerificationModal] = useState({ open: false, limit: 2 });
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showTelegramSettings, setShowTelegramSettings] = useState(false);
 
     // Check if user is new and should see onboarding
     useEffect(() => {
@@ -253,6 +257,45 @@ export default function Dashboard() {
                         </div>
                     </div>
 
+                    {/* Analytics Button */}
+                    <div className="mb-6 grid md:grid-cols-2 gap-4">
+                        <button
+                            onClick={() => setShowAnalytics(true)}
+                            className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl flex items-center justify-between hover:from-purple-500/20 hover:to-blue-500/20 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white">
+                                    📊
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-white font-semibold">Analytics</p>
+                                    <p className="text-slate-400 text-sm">Estatísticas de preços</p>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowTelegramSettings(true)}
+                            className="p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl flex items-center justify-between hover:from-blue-500/20 hover:to-cyan-500/20 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white">
+                                    📱
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-white font-semibold">Telegram</p>
+                                    <p className="text-slate-400 text-sm">Alertas instantâneos</p>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
                     {/* Update Bar */}
                     <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -379,6 +422,33 @@ export default function Dashboard() {
                     onClose={handleCloseOnboarding}
                     userName={user?.fullName}
                 />
+            )}
+
+            {/* Analytics Dashboard Modal */}
+            {showAnalytics && (
+                <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />
+            )}
+
+            {/* Telegram Settings Modal */}
+            {showTelegramSettings && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+                        <div className="flex items-center justify-between p-6 border-b border-slate-700">
+                            <h3 className="text-xl font-bold text-white">⚙️ Configurações do Telegram</h3>
+                            <button 
+                                onClick={() => setShowTelegramSettings(false)} 
+                                className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <TelegramSettings />
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

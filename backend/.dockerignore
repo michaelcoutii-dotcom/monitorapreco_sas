@@ -1,0 +1,28 @@
+# Backend .dockerignore (Multi-stage build)
+# Only ignore unnecessary files
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Build output (will be created inside container)
+target/
+
+# Local data
+data/
+
+# Docker files (not needed inside container)
+Dockerfile
+.dockerignore
+docker-compose*.yml

@@ -27,6 +27,7 @@ public class EmailService {
 
     /**
      * Send a price drop notification email to a specific user.
+     * Enhanced with competitive intelligence context.
      */
     public void sendPriceDropNotification(String userEmail, String productName, String productUrl, 
                                           Double oldPrice, Double newPrice) {
@@ -37,42 +38,84 @@ public class EmailService {
 
         double savings = oldPrice - newPrice;
         double percentDrop = (savings / oldPrice) * 100;
+        
+        // Determinar urgência baseado na queda
+        String urgencyBadge;
+        String urgencyColor;
+        if (percentDrop >= 20) {
+            urgencyBadge = "🔥 OFERTA IMPERDÍVEL";
+            urgencyColor = "#dc3545";
+        } else if (percentDrop >= 10) {
+            urgencyBadge = "⚡ GRANDE DESCONTO";
+            urgencyColor = "#fd7e14";
+        } else {
+            urgencyBadge = "💰 PREÇO BAIXOU";
+            urgencyColor = "#28a745";
+        }
 
-        String subject = String.format("🔻 Preço caiu! %s", truncate(productName, 40));
+        String subject = String.format("🔻 Preço caiu %.0f%%! %s", percentDrop, truncate(productName, 35));
         
         String htmlBody = String.format("""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 20px; border-radius: 10px 10px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">🔻 Alerta de Preço!</h1>
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a;">
+                <!-- Header com urgência -->
+                <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 25px; border-radius: 12px 12px 0 0;">
+                    <div style="background: %s; display: inline-block; padding: 6px 12px; border-radius: 20px; margin-bottom: 10px;">
+                        <span style="color: white; font-size: 12px; font-weight: bold;">%s</span>
+                    </div>
+                    <h1 style="color: white; margin: 0; font-size: 22px;">⚠️ Seu concorrente reduziu o preço!</h1>
+                    <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">Detectado agora pelo MonitoraPreço</p>
                 </div>
                 
-                <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef;">
-                    <h2 style="color: #333; margin-top: 0;">%s</h2>
+                <!-- Corpo principal -->
+                <div style="background: #1e293b; padding: 25px; border: 1px solid #334155;">
+                    <h2 style="color: #f1f5f9; margin-top: 0; font-size: 18px;">%s</h2>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0; color: #666;">
-                            <strong>Preço anterior:</strong> 
-                            <span style="text-decoration: line-through; color: #999;">R$ %.2f</span>
-                        </p>
-                        <p style="margin: 5px 0;">
-                            <strong>Novo preço:</strong> 
-                            <span style="color: #28a745; font-size: 24px; font-weight: bold;">R$ %.2f</span>
-                        </p>
-                        <p style="margin: 5px 0; color: #28a745;">
-                            <strong>Você economiza:</strong> R$ %.2f (%.1f%% off)
+                    <!-- Card de preço destacado -->
+                    <div style="background: linear-gradient(135deg, #1e3a5f 0%%, #0f172a 100%%); padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px solid #3b82f6;">
+                        <table style="width: 100%%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0;">
+                                    <span style="color: #94a3b8; font-size: 13px;">Preço anterior:</span><br>
+                                    <span style="text-decoration: line-through; color: #64748b; font-size: 18px;">R$ %.2f</span>
+                                </td>
+                                <td style="text-align: right; padding: 8px 0;">
+                                    <span style="color: #94a3b8; font-size: 13px;">Novo preço:</span><br>
+                                    <span style="color: #22c55e; font-size: 28px; font-weight: bold;">R$ %.2f</span>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <div style="background: #22c55e; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center;">
+                            <span style="color: white; font-size: 16px; font-weight: bold;">
+                                💸 Economia de R$ %.2f (%.1f%% OFF)
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Alerta competitivo -->
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                        <p style="margin: 0; color: #92400e; font-size: 14px;">
+                            <strong>⚡ Ação recomendada:</strong> Ajuste seu preço para manter competitividade no Mercado Livre.
                         </p>
                     </div>
                     
-                    <a href="%s" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                        Ver no Mercado Livre →
-                    </a>
+                    <!-- Botão CTA -->
+                    <div style="text-align: center; margin-top: 25px;">
+                        <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%%, #2563eb 100%%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
+                            Ver Produto no ML →
+                        </a>
+                    </div>
                 </div>
                 
-                <div style="background: #333; color: #999; padding: 15px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
-                    MonitoraPreço - Inteligência Competitiva
+                <!-- Footer -->
+                <div style="background: #0f172a; color: #64748b; padding: 20px; border-radius: 0 0 12px 12px; font-size: 12px; text-align: center; border-top: 1px solid #1e293b;">
+                    <p style="margin: 0;">📊 MonitoraPreço - Inteligência Competitiva para Mercado Livre</p>
+                    <p style="margin: 8px 0 0 0; color: #475569;">Monitoramento automático 24/7 dos seus concorrentes</p>
                 </div>
             </div>
             """,
+            urgencyColor,
+            urgencyBadge,
             productName,
             oldPrice,
             newPrice,
@@ -86,6 +129,7 @@ public class EmailService {
 
     /**
      * Send a price increase notification email to a specific user.
+     * Enhanced with competitive opportunity context.
      */
     public void sendPriceIncreaseNotification(String userEmail, String productName, String productUrl,
                                               Double oldPrice, Double newPrice) {
@@ -97,38 +141,64 @@ public class EmailService {
         double increase = newPrice - oldPrice;
         double percentIncrease = (increase / oldPrice) * 100;
 
-        String subject = String.format("📈 Preço subiu! %s", truncate(productName, 40));
+        String subject = String.format("📈 Concorrente subiu preço +%.0f%%! %s", percentIncrease, truncate(productName, 30));
         
         String htmlBody = String.format("""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #ffc107 0%%, #ff9800 100%%); padding: 20px; border-radius: 10px 10px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">📈 Preço Subiu!</h1>
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a;">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); padding: 25px; border-radius: 12px 12px 0 0;">
+                    <div style="background: #22c55e; display: inline-block; padding: 6px 12px; border-radius: 20px; margin-bottom: 10px;">
+                        <span style="color: white; font-size: 12px; font-weight: bold;">💡 OPORTUNIDADE</span>
+                    </div>
+                    <h1 style="color: white; margin: 0; font-size: 22px;">📈 Concorrente subiu o preço!</h1>
+                    <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">Detectado agora pelo MonitoraPreço</p>
                 </div>
                 
-                <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef;">
-                    <h2 style="color: #333; margin-top: 0;">%s</h2>
+                <!-- Corpo principal -->
+                <div style="background: #1e293b; padding: 25px; border: 1px solid #334155;">
+                    <h2 style="color: #f1f5f9; margin-top: 0; font-size: 18px;">%s</h2>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0; color: #666;">
-                            <strong>Preço anterior:</strong> 
-                            <span style="color: #28a745;">R$ %.2f</span>
-                        </p>
-                        <p style="margin: 5px 0;">
-                            <strong>Novo preço:</strong> 
-                            <span style="color: #dc3545; font-size: 24px; font-weight: bold;">R$ %.2f</span>
-                        </p>
-                        <p style="margin: 5px 0; color: #dc3545;">
-                            <strong>Aumento:</strong> R$ %.2f (+%.1f%%)
+                    <!-- Card de preço -->
+                    <div style="background: linear-gradient(135deg, #1e3a5f 0%%, #0f172a 100%%); padding: 20px; border-radius: 12px; margin: 20px 0; border: 2px solid #f59e0b;">
+                        <table style="width: 100%%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0;">
+                                    <span style="color: #94a3b8; font-size: 13px;">Preço anterior:</span><br>
+                                    <span style="color: #22c55e; font-size: 18px;">R$ %.2f</span>
+                                </td>
+                                <td style="text-align: right; padding: 8px 0;">
+                                    <span style="color: #94a3b8; font-size: 13px;">Novo preço:</span><br>
+                                    <span style="color: #ef4444; font-size: 28px; font-weight: bold;">R$ %.2f</span>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <div style="background: #ef4444; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center;">
+                            <span style="color: white; font-size: 16px; font-weight: bold;">
+                                📈 Aumento de R$ %.2f (+%.1f%%)
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Alerta de oportunidade -->
+                    <div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #22c55e;">
+                        <p style="margin: 0; color: #065f46; font-size: 14px;">
+                            <strong>✅ Oportunidade:</strong> Seu concorrente está mais caro! Você pode ganhar mais vendas mantendo seu preço atual.
                         </p>
                     </div>
                     
-                    <a href="%s" style="display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                        Ver no Mercado Livre →
-                    </a>
+                    <!-- Botão CTA -->
+                    <div style="text-align: center; margin-top: 25px;">
+                        <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);">
+                            Ver Produto no ML →
+                        </a>
+                    </div>
                 </div>
                 
-                <div style="background: #333; color: #999; padding: 15px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
-                    MonitoraPreço - Mercado Livre
+                <!-- Footer -->
+                <div style="background: #0f172a; color: #64748b; padding: 20px; border-radius: 0 0 12px 12px; font-size: 12px; text-align: center; border-top: 1px solid #1e293b;">
+                    <p style="margin: 0;">📊 MonitoraPreço - Inteligência Competitiva para Mercado Livre</p>
+                    <p style="margin: 8px 0 0 0; color: #475569;">Monitoramento automático 24/7 dos seus concorrentes</p>
                 </div>
             </div>
             """,
@@ -176,6 +246,17 @@ public class EmailService {
             return text;
         }
         return text.substring(0, maxLength - 3) + "...";
+    }
+
+    /**
+     * Extract first name safely from full name.
+     */
+    private String getFirstName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "Usuário";
+        }
+        String[] parts = fullName.trim().split(" ");
+        return parts[0];
     }
 
     /**
@@ -230,14 +311,15 @@ public class EmailService {
                 
                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
                     <p style="margin: 0;">Se você não criou esta conta, ignore este email.</p>
-                    <p style="margin: 10px 0 0 0; color: #64748b;">© 2024 MonitoraPreço - Todos os direitos reservados</p>
+                    <p style="margin: 10px 0 0 0; color: #64748b;">© %d MonitoraPreço - Todos os direitos reservados</p>
                 </div>
             </div>
             """,
-            fullName.split(" ")[0],
+            getFirstName(fullName),
             verificationLink,
             verificationLink,
-            verificationLink
+            verificationLink,
+            java.time.Year.now().getValue()
         );
 
         sendEmail(userEmail, subject, htmlBody);
@@ -344,12 +426,13 @@ public class EmailService {
                 
                 <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
                     <p style="margin: 0;">Por segurança, nunca compartilhe este código.</p>
-                    <p style="margin: 10px 0 0 0; color: #64748b;">© 2024 MonitoraPreço</p>
+                    <p style="margin: 10px 0 0 0; color: #64748b;">© %d MonitoraPreço</p>
                 </div>
             </div>
             """,
-            fullName.split(" ")[0],
-            code
+            getFirstName(fullName),
+            code,
+            java.time.Year.now().getValue()
         );
 
         sendEmail(userEmail, subject, htmlBody);

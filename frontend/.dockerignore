@@ -1,0 +1,32 @@
+# Frontend .dockerignore (Multi-stage build)
+# Only ignore unnecessary files
+
+# Dependencies (will be installed inside container)
+node_modules/
+
+# Build output (will be created inside container)
+dist/
+build/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files (use docker-compose env instead)
+.env
+.env.local
+.env.*.local
+
+# Docker files (not needed inside container)
+Dockerfile
+.dockerignore

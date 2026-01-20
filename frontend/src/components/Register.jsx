@@ -170,6 +170,26 @@ export default function Register() {
                 <p className="text-white/70">Conte com nossa equipe para qualquer dúvida</p>
               </div>
             </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-blue-400/30 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-lg">✈️</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Alertas no Telegram</h3>
+                <p className="text-white/70">Receba notificações instantâneas quando os preços mudarem</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-purple-400/30 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-lg">📊</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Analytics Avançado</h3>
+                <p className="text-white/70">Dashboard completo com histórico e gráficos de preços</p>
+              </div>
+            </div>
           </div>
 
           {/* Testimonial */}
