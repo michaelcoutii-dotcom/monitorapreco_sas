@@ -21,6 +21,9 @@ build/
 backend/.env
 frontend/.env.local
 
+# Local secrets file (do not commit)
+kkkkkkk
+
 # Application secrets (local development)
 **/application-local.properties
 
