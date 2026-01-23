@@ -3,6 +3,7 @@ package com.mercadolivre.pricemonitor.controller;
 import com.mercadolivre.pricemonitor.model.User;
 import com.mercadolivre.pricemonitor.repository.UserRepository;
 import com.mercadolivre.pricemonitor.service.EmailService;
+import com.mercadolivre.pricemonitor.service.ResendEmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +30,11 @@ public class EmailVerificationController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private ResendEmailService resendEmailService;
+
     @Value("${frontend.url:http://localhost:5173/}")
+    private String frontendUrl;
     private String frontendUrl;
 
     /**
@@ -110,13 +115,24 @@ public class EmailVerificationController {
             user.setVerificationTokenExpires(LocalDateTime.now().plusHours(24));
             userRepository.save(user);
 
-            // Send email
-            emailService.sendVerificationEmail(
-                user.getEmail(),
-                user.getFullName(),
-                token,
-                frontendUrl
-            );
+            // Send email (usa Resend se configurado, senão Gmail SMTP)
+            if (resendEmailService.isConfigured()) {
+                log.info("📧 Usando Resend API para enviar email");
+                resendEmailService.sendVerificationEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    token,
+                    frontendUrl
+                );
+            } else {
+                log.info("📧 Usando Gmail SMTP para enviar email");
+                emailService.sendVerificationEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    token,
+                    frontendUrl
+                );
+            }
 
             log.info("✅ Email de verificação reenviado para: {}", user.getEmail());
 

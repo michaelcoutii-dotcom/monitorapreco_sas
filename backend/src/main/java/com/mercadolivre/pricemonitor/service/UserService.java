@@ -29,6 +29,9 @@ public class UserService {
     private EmailService emailService;
 
     @Autowired
+    private ResendEmailService resendEmailService;
+
+    @Autowired
     private NotificationRepository notificationRepository;
 
     @Value("${frontend.url:http://localhost:5173/}")
@@ -65,14 +68,25 @@ public class UserService {
             log.error("❌ Erro ao criar notificação de boas-vindas: {}", e.getMessage());
         }
         
-        // Enviar email de verificação
+        // Enviar email de verificação (usa Resend se configurado, senão Gmail SMTP)
         try {
-            emailService.sendVerificationEmail(
-                savedUser.getEmail(),
-                savedUser.getFullName(),
-                verificationToken,
-                frontendUrl
-            );
+            if (resendEmailService.isConfigured()) {
+                log.info("📧 Usando Resend API para enviar email");
+                resendEmailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFullName(),
+                    verificationToken,
+                    frontendUrl
+                );
+            } else {
+                log.info("📧 Usando Gmail SMTP para enviar email");
+                emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFullName(),
+                    verificationToken,
+                    frontendUrl
+                );
+            }
             log.info("📧 Email de verificação enviado para: {}", savedUser.getEmail());
         } catch (Exception e) {
             log.error("❌ Erro ao enviar email de verificação: {}", e.getMessage());
