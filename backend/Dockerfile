@@ -14,7 +14,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # ===== STAGE 2: Runtime =====
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
@@ -27,8 +27,8 @@ RUN mkdir -p /app/data
 # Expose port
 EXPOSE 8081
 
-# JVM optimizations for containers
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+UseStringDeduplication"
+# JVM optimizations for containers with limited memory (Railway free tier)
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=50.0 -XX:+UseSerialGC -Xms128m -Xmx256m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
 # Run the application with optimized settings
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
