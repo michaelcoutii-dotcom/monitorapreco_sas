@@ -56,19 +56,19 @@ function AddProduct({ onAdd, adding }) {
   }
 
   return (
-    <div className="rounded-2xl shadow-xl p-8 mb-10 transition-all duration-300 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10">
+    <div className="rounded-2xl shadow-xl p-4 sm:p-8 mb-6 sm:mb-10 transition-all duration-300 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
             Adicionar Novo Produto
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-400">
             Cole a URL do Mercado Livre para começar o monitoramento
           </p>
         </div>

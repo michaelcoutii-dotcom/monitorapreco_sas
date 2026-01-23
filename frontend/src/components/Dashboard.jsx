@@ -202,28 +202,28 @@ export default function Dashboard() {
                 onShowProductHistory={(product) => setPriceHistoryModal({ open: true, product })}
             />
             <main className="min-h-[calc(100vh-80px)]">
-                <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
                     
                     {/* Stats Bar */}
-                    <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="mb-4 sm:mb-6 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
                         {/* Total Products */}
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">📦</span>
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xl sm:text-2xl">📦</span>
                                 <div>
-                                    <p className="text-slate-400 text-xs font-medium">Total Produtos</p>
-                                    <p className="text-white font-bold text-xl">{products.length}</p>
+                                    <p className="text-slate-400 text-[10px] sm:text-xs font-medium">Total Produtos</p>
+                                    <p className="text-white font-bold text-lg sm:text-xl">{products.length}</p>
                                 </div>
                             </div>
                         </div>
                         
                         {/* Price Drops */}
-                        <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">📉</span>
+                        <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-3 sm:p-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xl sm:text-2xl">📉</span>
                                 <div>
-                                    <p className="text-slate-400 text-xs font-medium">Preços em Queda</p>
-                                    <p className="text-emerald-400 font-bold text-xl">
+                                    <p className="text-slate-400 text-[10px] sm:text-xs font-medium">Preços em Queda</p>
+                                    <p className="text-emerald-400 font-bold text-lg sm:text-xl">
                                         {products.filter(p => p.lastPrice && p.currentPrice < p.lastPrice).length}
                                     </p>
                                 </div>
@@ -231,12 +231,12 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Price Ups */}
-                        <div className="bg-slate-800/50 border border-red-500/30 rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">📈</span>
+                        <div className="bg-slate-800/50 border border-red-500/30 rounded-xl p-3 sm:p-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xl sm:text-2xl">📈</span>
                                 <div>
-                                    <p className="text-slate-400 text-xs font-medium">Preços Subindo</p>
-                                    <p className="text-red-400 font-bold text-xl">
+                                    <p className="text-slate-400 text-[10px] sm:text-xs font-medium">Preços Subindo</p>
+                                    <p className="text-red-400 font-bold text-lg sm:text-xl">
                                         {products.filter(p => p.lastPrice && p.currentPrice > p.lastPrice).length}
                                     </p>
                                 </div>
@@ -244,12 +244,12 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Last Update */}
-                        <div className="bg-slate-800/50 border border-amber-500/30 rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">🕐</span>
+                        <div className="bg-slate-800/50 border border-amber-500/30 rounded-xl p-3 sm:p-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xl sm:text-2xl">🕐</span>
                                 <div>
-                                    <p className="text-slate-400 text-xs font-medium">Última Atualização</p>
-                                    <p className="text-amber-400 font-bold text-xl">
+                                    <p className="text-slate-400 text-[10px] sm:text-xs font-medium">Última Atualização</p>
+                                    <p className="text-amber-400 font-bold text-lg sm:text-xl">
                                         {lastUpdateTime ? formatUpdateTime() : '--:--'}
                                     </p>
                                 </div>
@@ -258,18 +258,18 @@ export default function Dashboard() {
                     </div>
 
                     {/* Analytics Button */}
-                    <div className="mb-6 grid md:grid-cols-2 gap-4">
+                    <div className="mb-4 sm:mb-6 grid md:grid-cols-2 gap-2 sm:gap-4">
                         <button
                             onClick={() => setShowAnalytics(true)}
-                            className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl flex items-center justify-between hover:from-purple-500/20 hover:to-blue-500/20 transition-all group"
+                            className="p-3 sm:p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl flex items-center justify-between hover:from-purple-500/20 hover:to-blue-500/20 transition-all group"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm sm:text-base">
                                     📊
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-white font-semibold">Analytics</p>
-                                    <p className="text-slate-400 text-sm">Estatísticas de preços</p>
+                                    <p className="text-white font-semibold text-sm sm:text-base">Analytics</p>
+                                    <p className="text-slate-400 text-xs sm:text-sm">Estatísticas de preços</p>
                                 </div>
                             </div>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,15 +279,15 @@ export default function Dashboard() {
                         
                         <button
                             onClick={() => setShowTelegramSettings(true)}
-                            className="p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl flex items-center justify-between hover:from-blue-500/20 hover:to-cyan-500/20 transition-all group"
+                            className="p-3 sm:p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl flex items-center justify-between hover:from-blue-500/20 hover:to-cyan-500/20 transition-all group"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-sm sm:text-base">
                                     📱
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-white font-semibold">Telegram</p>
-                                    <p className="text-slate-400 text-sm">Alertas instantâneos</p>
+                                    <p className="text-white font-semibold text-sm sm:text-base">Telegram</p>
+                                    <p className="text-slate-400 text-xs sm:text-sm">Alertas instantâneos</p>
                                 </div>
                             </div>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,14 +297,14 @@ export default function Dashboard() {
                     </div>
 
                     {/* Update Bar */}
-                    <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white">
+                    <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm sm:text-base">
                                 🔄
                             </div>
                             <div>
-                                <p className="text-white font-semibold">Atualização de Preços</p>
-                                <p className="text-slate-400 text-sm">
+                                <p className="text-white font-semibold text-sm sm:text-base">Atualização de Preços</p>
+                                <p className="text-slate-400 text-xs sm:text-sm">
                                     {isRefreshing 
                                         ? 'Buscando preços no Mercado Livre...' 
                                         : 'Clique para buscar os preços mais recentes'}
@@ -314,7 +314,7 @@ export default function Dashboard() {
                         <button 
                             onClick={handleRefreshClick}
                             disabled={isRefreshing}
-                            className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg shadow-amber-500/25"
+                            className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 text-sm sm:text-base"
                         >
                             {isRefreshing ? (
                                 <>
