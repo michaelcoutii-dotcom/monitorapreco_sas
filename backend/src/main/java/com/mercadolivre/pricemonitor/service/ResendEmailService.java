@@ -1,5 +1,6 @@
 package com.mercadolivre.pricemonitor.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -32,11 +33,25 @@ public class ResendEmailService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @PostConstruct
+    public void init() {
+        boolean configured = isConfigured();
+        log.info("📧 [RESEND] Inicializando - API Key configurada: {} | From: {} <{}>", 
+            configured, fromName, fromEmail);
+        if (!configured) {
+            log.warn("📧 [RESEND] API Key está vazia ou não configurada. Usando fallback SMTP.");
+            log.warn("📧 [RESEND] apiKey value: '{}'", apiKey != null ? (apiKey.isBlank() ? "<blank>" : "re_***" + apiKey.substring(Math.max(0, apiKey.length()-4))) : "<null>");
+        }
+    }
+
     /**
      * Check if Resend is configured
      */
     public boolean isConfigured() {
-        return apiKey != null && !apiKey.isBlank() && !apiKey.equals("your-resend-api-key");
+        boolean result = apiKey != null && !apiKey.isBlank() && !apiKey.equals("your-resend-api-key");
+        log.debug("📧 [RESEND] isConfigured check: apiKey={}, result={}", 
+            apiKey != null ? (apiKey.isBlank() ? "<blank>" : "re_***") : "<null>", result);
+        return result;
     }
 
     /**
