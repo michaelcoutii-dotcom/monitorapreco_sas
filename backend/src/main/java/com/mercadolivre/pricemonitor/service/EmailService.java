@@ -219,7 +219,13 @@ public class EmailService {
      */
     private void sendEmail(String to, String subject, String htmlBody) {
         try {
-            log.info("📧 Enviando email para: {} via Gmail SMTP...", to);
+            log.info("📧 Iniciando envio de email para: {} via Gmail SMTP...", to);
+            log.info("📧 [CONFIG] Host: smtp.gmail.com, FromEmail: {}, FromName: {}", fromEmail, fromName);
+            
+            if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your-email")) {
+                log.error("📧 ❌ ERRO: mail.from.email não está configurado corretamente: '{}'", fromEmail);
+                return;
+            }
             
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -233,9 +239,9 @@ public class EmailService {
             log.info("📧 ✅ Email enviado com SUCESSO para {}", to);
 
         } catch (MessagingException e) {
-            log.error("📧 ❌ Erro ao enviar email: {}", e.getMessage());
+            log.error("📧 ❌ Erro MessagingException ao enviar email para {}: {}", to, e.getMessage(), e);
         } catch (Exception e) {
-            log.error("📧 ❌ Erro inesperado ao enviar email: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            log.error("📧 ❌ Erro inesperado ao enviar email para {}: {} - {}", to, e.getClass().getSimpleName(), e.getMessage(), e);
         }
     }
 
