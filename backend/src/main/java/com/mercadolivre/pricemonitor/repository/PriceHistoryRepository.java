@@ -59,7 +59,7 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     List<Object[]> countChangesByProductForUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
     
     // Mudanças por hora do dia (0-23) - só mudanças reais
-    @Query(value = "SELECT EXTRACT(HOUR FROM ph.recorded_at)::integer as hour, COUNT(*) as count FROM price_history ph " +
+    @Query(value = "SELECT CAST(EXTRACT(HOUR FROM ph.recorded_at) AS INTEGER) as hour, COUNT(*) as count FROM price_history ph " +
            "JOIN products p ON ph.product_id = p.id " +
            "INNER JOIN price_history ph_prev ON ph.product_id = ph_prev.product_id AND ph_prev.id = (" +
            "  SELECT MAX(ph2.id) FROM price_history ph2 WHERE ph2.product_id = ph.product_id AND ph2.id < ph.id" +
@@ -71,7 +71,7 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     
     // Mudanças por dia da semana (1=DOM, 7=SAB) - só mudanças reais
     // PostgreSQL: DOW retorna 0=DOM, 6=SAB, então somamos 1 para ficar igual MySQL
-    @Query(value = "SELECT (EXTRACT(DOW FROM ph.recorded_at)::integer + 1) as dayOfWeek, COUNT(*) as count FROM price_history ph " +
+    @Query(value = "SELECT CAST(EXTRACT(DOW FROM ph.recorded_at) + 1 AS INTEGER) as dayOfWeek, COUNT(*) as count FROM price_history ph " +
            "JOIN products p ON ph.product_id = p.id " +
            "INNER JOIN price_history ph_prev ON ph.product_id = ph_prev.product_id AND ph_prev.id = (" +
            "  SELECT MAX(ph2.id) FROM price_history ph2 WHERE ph2.product_id = ph.product_id AND ph2.id < ph.id" +
@@ -82,14 +82,14 @@ public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long
     List<Object[]> countChangesByDayOfWeekForUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
     
     // Mudanças por data - só mudanças reais
-    @Query(value = "SELECT ph.recorded_at::date as date, COUNT(*) as count FROM price_history ph " +
+    @Query(value = "SELECT CAST(ph.recorded_at AS DATE) as date, COUNT(*) as count FROM price_history ph " +
            "JOIN products p ON ph.product_id = p.id " +
            "INNER JOIN price_history ph_prev ON ph.product_id = ph_prev.product_id AND ph_prev.id = (" +
            "  SELECT MAX(ph2.id) FROM price_history ph2 WHERE ph2.product_id = ph.product_id AND ph2.id < ph.id" +
            ") " +
            "WHERE p.user_id = :userId AND ph.recorded_at >= :since " +
            "AND ph.price != ph_prev.price " +
-           "GROUP BY ph.recorded_at::date ORDER BY date", nativeQuery = true)
+           "GROUP BY CAST(ph.recorded_at AS DATE) ORDER BY date", nativeQuery = true)
     List<Object[]> countChangesByDateForUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
     
     // Total de mudanças do usuário - só mudanças reais (ignora primeiro registro de cada produto)
