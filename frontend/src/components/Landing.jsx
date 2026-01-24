@@ -25,7 +25,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center gap-3">
-              <img src="/logo_monitora.png" alt="MonitoraPreço" className="h-12 w-12 object-contain" />
+              <img src="/logo_monitora.png" alt="MonitoraPreço" className="h-14 w-14 sm:h-16 sm:w-16 object-contain" />
               <div className="flex flex-col">
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
                   MonitoraPreço
