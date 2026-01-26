@@ -65,9 +65,9 @@ public class ScraperService {
             } else {
                 log.error("❌ Token Mercado Livre não disponível. Autorização necessária para buscar produto.");
                 // Retorna erro claro para o frontend
-                return CompletableFuture.completedFuture(
-                    new ScrapeResponse(null, null, null, "Token Mercado Livre não disponível. Faça login para buscar produtos do ML.")
-                );
+                    return CompletableFuture.completedFuture(
+                        new ScrapeResponse(null, null, null, null)
+                    );
             }
         }
 
