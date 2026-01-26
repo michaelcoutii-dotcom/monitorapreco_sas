@@ -23,4 +23,9 @@ public interface MercadoLivreTokenRepository extends JpaRepository<MercadoLivreT
      * Busca token por user ID do Mercado Livre.
      */
     Optional<MercadoLivreToken> findByUserIdMl(Long userIdMl);
+
+    /**
+     * Busca token pelo usuário do sistema.
+     */
+    Optional<MercadoLivreToken> findByUser(com.mercadolivre.pricemonitor.model.User user);
 }

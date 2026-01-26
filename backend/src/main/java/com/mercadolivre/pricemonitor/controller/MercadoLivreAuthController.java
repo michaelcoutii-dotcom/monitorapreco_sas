@@ -40,11 +40,13 @@ public class MercadoLivreAuthController {
      * O ML redireciona para esta URL após o usuário autorizar.
      */
     @GetMapping("/callback")
-    public ResponseEntity<String> handleCallback(
+        // Exemplo: Recebe o ID do usuário logado via parâmetro ou contexto (ajuste conforme seu auth)
+        public ResponseEntity<String> handleCallback(
             @RequestParam(value = "code", required = false) String code,
             @RequestParam(value = "error", required = false) String error,
-            @RequestParam(value = "error_description", required = false) String errorDescription
-    ) {
+            @RequestParam(value = "error_description", required = false) String errorDescription,
+            @RequestParam(value = "userId", required = false) Long userId // ajuste conforme seu auth
+        ) {
         // Se houve erro na autorização
         if (error != null) {
             System.err.println("[ML_OAUTH] Erro: " + error + " - " + errorDescription);
@@ -61,22 +63,28 @@ public class MercadoLivreAuthController {
         }
 
         try {
-            // Trocar o código pelo access token
-            Map<String, Object> tokenData = mercadoLivreService.exchangeCodeForToken(code);
+            // Buscar usuário do sistema (exemplo, ajuste conforme seu auth)
+            com.mercadolivre.pricemonitor.model.User user = null;
+            if (userId != null) {
+                // Exemplo: buscar pelo UserService ou UserRepository
+                // user = userService.findById(userId);
+                // Adapte para seu contexto real
+            }
 
-            if (tokenData != null) {
+            // Trocar o código pelo access token e vincular ao usuário
+            Map<String, Object> tokenData = mercadoLivreService.exchangeCodeForToken(code);
+            if (tokenData != null && user != null) {
+                // Vincular token ao usuário
+                mercadoLivreService.saveTokenForUser(tokenData, user);
                 System.out.println("[ML_OAUTH] ✅ Autorização concluída com sucesso!");
-                
-                // Redirecionar para o frontend com sucesso
                 return ResponseEntity.ok(buildRedirectHtml(
                         frontendUrl + "settings?ml_auth=success"
                 ));
             } else {
                 return ResponseEntity.ok(buildRedirectHtml(
-                        frontendUrl + "settings?ml_auth=error&message=Falha ao obter token"
+                        frontendUrl + "settings?ml_auth=error&message=Falha ao obter token ou usuário não encontrado"
                 ));
             }
-
         } catch (Exception e) {
             System.err.println("[ML_OAUTH] Erro ao processar callback: " + e.getMessage());
             return ResponseEntity.ok(buildRedirectHtml(

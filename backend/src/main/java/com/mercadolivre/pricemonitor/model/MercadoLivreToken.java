@@ -37,6 +37,11 @@ public class MercadoLivreToken {
     @Column(name = "user_id_ml")
     private Long userIdMl;
 
+    // Relacionamento com usuário do sistema
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

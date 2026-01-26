@@ -23,6 +23,61 @@ import java.util.Optional;
 @Service
 @SuppressWarnings("unchecked") // RestTemplate retorna Map raw type - comportamento esperado
 public class MercadoLivreService {
+        /**
+         * Salva ou atualiza o token no banco de dados, vinculado ao usuário.
+         */
+        public void saveTokenForUser(Map<String, Object> tokenData, com.mercadolivre.pricemonitor.model.User user) {
+            String accessToken = (String) tokenData.get("access_token");
+            String refreshToken = (String) tokenData.get("refresh_token");
+            String tokenType = (String) tokenData.get("token_type");
+            Integer expiresIn = (Integer) tokenData.get("expires_in");
+            Object userIdObj = tokenData.get("user_id");
+            Long userIdMl = userIdObj != null ? Long.valueOf(userIdObj.toString()) : null;
+
+            LocalDateTime expiresAt = expiresIn != null
+                ? LocalDateTime.now().plusSeconds(expiresIn)
+                : LocalDateTime.now().plusHours(6);
+
+            // Buscar token existente ou criar novo para este usuário
+            MercadoLivreToken token = tokenRepository.findByUser(user)
+                    .orElse(new MercadoLivreToken());
+
+            token.setAccessToken(accessToken);
+            token.setRefreshToken(refreshToken);
+            token.setTokenType(tokenType);
+            token.setExpiresAt(expiresAt);
+            token.setUserIdMl(userIdMl);
+            token.setUser(user);
+
+            tokenRepository.save(token);
+        }
+    /**
+     * Busca informações de um produto pelo usuário do sistema.
+     */
+    public Map<String, Object> getProductByUrlForUser(String url, com.mercadolivre.pricemonitor.model.User user) {
+        Optional<MercadoLivreToken> tokenOpt = tokenRepository.findByUser(user);
+        if (tokenOpt.isEmpty() || !tokenOpt.get().isValid()) {
+            throw new RuntimeException("Token Mercado Livre não disponível ou inválido para este usuário.");
+        }
+        MercadoLivreToken userToken = tokenOpt.get();
+        String itemId = extractItemId(url);
+        if (itemId == null) {
+            throw new RuntimeException("Não foi possível extrair o ID do produto da URL");
+        }
+        String apiUrlItem = apiUrl + "/items/" + itemId;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(userToken.getAccessToken());
+        HttpEntity<?> request = new HttpEntity<>(headers);
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(apiUrlItem, HttpMethod.GET, request, Map.class);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return response.getBody();
+            }
+        } catch (Exception e) {
+            System.err.println("[ML_API] ❌ Erro ao buscar produto para usuário: " + e.getMessage());
+        }
+        return null;
+    }
 
     @Value("${mercadolivre.client.id}")
     private String clientId;

@@ -47,25 +47,41 @@ public class ScraperService {
 
     /**
      * Asynchronously fetches product data.
-     * Uses ML API if OAuth token is available, otherwise falls back to Python scraper.
+     * Para URLs do Mercado Livre, usa apenas a API oficial. Nunca usa o scraper Python.
+     * Para outros sites, pode usar o scraper Python.
      *
-     * @param productUrl The Mercado Livre product URL.
+     * @param productUrl The product URL.
      * @return A CompletableFuture containing the ScrapeResponse, or empty if an error occurs.
      */
     public CompletableFuture<ScrapeResponse> fetchProductData(String productUrl) {
-        // Limpar a URL antes de processar (remove parâmetros de tracking)
         String cleanUrl = cleanMercadoLivreUrl(productUrl);
         log.info("🧹 URL limpa: {}", cleanUrl);
-        
-        // Tentar usar a API oficial do ML primeiro
-        if (mercadoLivreService.hasValidToken()) {
-            log.info("🔑 Usando API oficial do Mercado Livre para: {}", cleanUrl);
-            return fetchFromMercadoLivreApi(cleanUrl);
+
+        // Detecta se é URL do Mercado Livre
+        if (isMercadoLivreUrl(cleanUrl)) {
+            if (mercadoLivreService.hasValidToken()) {
+                log.info("🔑 Usando API oficial do Mercado Livre para: {}", cleanUrl);
+                return fetchFromMercadoLivreApi(cleanUrl);
+            } else {
+                log.error("❌ Token Mercado Livre não disponível. Autorização necessária para buscar produto.");
+                // Retorna erro claro para o frontend
+                return CompletableFuture.completedFuture(
+                    new ScrapeResponse(null, null, null, "Token Mercado Livre não disponível. Faça login para buscar produtos do ML.")
+                );
+            }
         }
-        
-        // Fallback para o scraper Python
+
+        // Para outros sites, usa o scraper Python normalmente
         log.info("🔧 Usando scraper Python para: {}", cleanUrl);
         return fetchFromPythonScraper(cleanUrl);
+    }
+
+    /**
+     * Verifica se a URL é do Mercado Livre.
+     */
+    private boolean isMercadoLivreUrl(String url) {
+        if (url == null) return false;
+        return url.contains("mercadolivre.com.br") || url.contains("mercadolibre.com");
     }
     
     /**
