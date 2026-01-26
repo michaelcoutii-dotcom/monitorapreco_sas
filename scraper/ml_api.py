@@ -27,11 +27,11 @@ def _print_env_diagnostics():
     env_refresh = os.getenv("MERCADO_LIVRE_REFRESH_TOKEN")
     file_access, file_refresh = token_manager.read_tokens()
 
-    print("[ML_API][DIAG] MERCADO_LIVRE_APP_ID:", _mask(client_id))
-    print("[ML_API][DIAG] MERCADO_LIVRE_CLIENT_SECRET:", _mask(client_secret))
-    print("[ML_API][DIAG] MERCADO_LIVRE_REFRESH_TOKEN (env):", _mask(env_refresh))
-    print("[ML_API][DIAG] token_storage.json access_token:", _mask(file_access))
-    print("[ML_API][DIAG] token_storage.json refresh_token:", _mask(file_refresh))
+    print("[ML_API][DIAG] MERCADO_LIVRE_APP_ID:", _mask(client_id), flush=True)
+    print("[ML_API][DIAG] MERCADO_LIVRE_CLIENT_SECRET:", _mask(client_secret), flush=True)
+    print("[ML_API][DIAG] MERCADO_LIVRE_REFRESH_TOKEN (env):", _mask(env_refresh), flush=True)
+    print("[ML_API][DIAG] token_storage.json access_token:", _mask(file_access), flush=True)
+    print("[ML_API][DIAG] token_storage.json refresh_token:", _mask(file_refresh), flush=True)
 
 
 # Print diagnostics on import to help debug env/config issues in production
@@ -88,7 +88,7 @@ async def refresh_access_token() -> Optional[str]:
     Salva os novos tokens no armazenamento.
     """
     async with token_refresh_lock:
-        print("[ML_API] 🔄 Iniciando a renovação do token de acesso...")
+        print("[ML_API] 🔄 Iniciando a renovação do token de acesso...", flush=True)
         
         # Lê as credenciais do ambiente
         client_id = os.getenv("MERCADO_LIVRE_APP_ID")
@@ -100,7 +100,7 @@ async def refresh_access_token() -> Optional[str]:
             refresh_token = os.getenv("MERCADO_LIVRE_REFRESH_TOKEN")
 
         if not all([client_id, client_secret, refresh_token]):
-            print("[ML_API] ❌ Erro Crítico: APP_ID, CLIENT_SECRET e REFRESH_TOKEN devem ser configurados.")
+            print("[ML_API] ❌ Erro Crítico: APP_ID, CLIENT_SECRET e REFRESH_TOKEN devem ser configurados.", flush=True)
             return None
 
         url = f"{ML_API_BASE_URL}/oauth/token"
@@ -120,13 +120,13 @@ async def refresh_access_token() -> Optional[str]:
                 new_token_data = response.json()
                 token_manager.write_tokens(new_token_data)
                 MLApiStats.record_token_refresh()
-                print("[ML_API] ✅ Token renovado com sucesso.")
+                print("[ML_API] ✅ Token renovado com sucesso.", flush=True)
                 return new_token_data.get('access_token')
             else:
-                print(f"[ML_API] ❌ Falha ao renovar o token. Status: {response.status_code}, Resposta: {response.text}")
+                print(f"[ML_API] ❌ Falha ao renovar o token. Status: {response.status_code}, Resposta: {response.text}", flush=True)
                 return None
         except Exception as e:
-            print(f"[ML_API] ❌ Exceção ao renovar o token: {e}")
+            print(f"[ML_API] ❌ Exceção ao renovar o token: {e}", flush=True)
             return None
 
 async def get_access_token() -> Optional[str]:
@@ -135,7 +135,7 @@ async def get_access_token() -> Optional[str]:
     """
     access_token, _ = token_manager.read_tokens()
     if not access_token:
-        print("[ML_API] Token de acesso não encontrado no armazenamento. Tentando renovar...")
+        print("[ML_API] Token de acesso não encontrado no armazenamento. Tentando renovar...", flush=True)
         return await refresh_access_token()
     return access_token
 
@@ -163,7 +163,7 @@ async def fetch_product_from_api(item_id: str, retry: bool = True) -> Optional[D
 
         # Se o token expirou (Unauthorized/Forbidden) e ainda podemos tentar de novo
         if response.status_code in [401, 403] and retry:
-            print(f"[ML_API] ⚠️ Token possivelmente expirado (status {response.status_code}). Tentando renovar...")
+            print(f"[ML_API] ⚠️ Token possivelmente expirado (status {response.status_code}). Tentando renovar...", flush=True)
             new_access_token = await refresh_access_token()
             if new_access_token:
                 # Tenta a chamada novamente, mas sem permitir outro retry.
@@ -172,12 +172,12 @@ async def fetch_product_from_api(item_id: str, retry: bool = True) -> Optional[D
 
         if response.status_code == 429:
             MLApiStats.record_rate_limit()
-            print(f"[ML_API] ⚠️ Rate limit atingido para {item_id}")
+            print(f"[ML_API] ⚠️ Rate limit atingido para {item_id}", flush=True)
             return None
         
         if response.status_code != 200:
             MLApiStats.record_error()
-            print(f"[ML_API] ❌ Erro {response.status_code} para {item_id}. Resposta: {response.text[:200]}")
+            print(f"[ML_API] ❌ Erro {response.status_code} para {item_id}. Resposta: {response.text[:200]}", flush=True)
             return None
         
         data = response.json()
@@ -189,7 +189,7 @@ async def fetch_product_from_api(item_id: str, retry: bool = True) -> Optional[D
 
         if title and price:
             MLApiStats.record_success()
-            print(f"[ML_API] ✅ Sucesso: {title[:50]}... - R$ {price}")
+            print(f"[ML_API] ✅ Sucesso: {title[:50]}... - R$ {price}", flush=True)
             return {"title": title, "price": float(price), "imageUrl": image_url}
         
         MLApiStats.record_error()
@@ -197,18 +197,18 @@ async def fetch_product_from_api(item_id: str, retry: bool = True) -> Optional[D
             
     except httpx.TimeoutException:
         MLApiStats.record_error()
-        print(f"[ML_API] ⏱️ Timeout para {item_id}")
+        print(f"[ML_API] ⏱️ Timeout para {item_id}", flush=True)
         return None
     except Exception as e:
         MLApiStats.record_error()
-        print(f"[ML_API] ❌ Exceção em fetch_product_from_api: {e}")
+        print(f"[ML_API] ❌ Exceção em fetch_product_from_api: {e}", flush=True)
         return None
 
 async def get_product_info(url: str) -> Optional[Dict[str, Any]]:
     item_id = extract_item_id(url)
     if not item_id:
-        print(f"[ML_API] ❌ Não foi possível extrair ID da URL: {url[:50]}...")
+        print(f"[ML_API] ❌ Não foi possível extrair ID da URL: {url[:50]}...", flush=True)
         return None
     
-    print(f"[ML_API] 🔍 Buscando produto: {item_id}")
+    print(f"[ML_API] 🔍 Buscando produto: {item_id}", flush=True)
     return await fetch_product_from_api(item_id)

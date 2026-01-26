@@ -27,7 +27,7 @@ try:
     ML_API_AVAILABLE = True
 except ImportError:
     ML_API_AVAILABLE = False
-    print("[WARN] ML API não disponível!")
+    print("[WARN] ML API não disponível!", flush=True)
 
 # Importar scraper como fallback
 try:
@@ -35,7 +35,7 @@ try:
     SCRAPER_AVAILABLE = True
 except ImportError:
     SCRAPER_AVAILABLE = False
-    print("[ERRO] Scraper não disponível!")
+    print("[ERRO] Scraper não disponível!", flush=True)
 
 
 # ========================================
@@ -47,24 +47,24 @@ async def lifespan(app: FastAPI):
     """
     Handles startup and shutdown events for the FastAPI application.
     """
-    print("[INFO] Application startup...")
+    print("[INFO] Application startup...", flush=True)
     
     # Inicializar scraper
     if SCRAPER_AVAILABLE:
-        print("[INFO] Inicializando scraper Playwright...")
+        print("[INFO] Inicializando scraper Playwright...", flush=True)
         try:
             await Scraper.initialize()
-            print("[INFO] ✅ Scraper inicializado com sucesso!")
+            print("[INFO] ✅ Scraper inicializado com sucesso!", flush=True)
         except Exception as e:
-            print(f"[WARN] ⚠️ Falha ao inicializar scraper: {e}")
+            print(f"[WARN] ⚠️ Falha ao inicializar scraper: {e}", flush=True)
     
     yield  # The application is now running
     
-    print("[INFO] Application shutdown...")
+    print("[INFO] Application shutdown...", flush=True)
     if SCRAPER_AVAILABLE:
         try:
             await Scraper.close()
-            print("[INFO] Scraper fechado.")
+            print("[INFO] Scraper fechado.", flush=True)
         except:
             pass
 
@@ -216,42 +216,42 @@ async def scrape_product(request: ScrapeRequest):
     
     # Limpar URL
     clean_url = clean_mercadolivre_url(request.url)
-    print(f"[INFO] URL: {clean_url[:80]}...")
+    print(f"[INFO] URL: {clean_url[:80]}...", flush=True)
     
     # 1. Verificar cache primeiro
     if CACHE_ENABLED:
         cached = scrape_cache.get(clean_url)
         if cached:
-            print(f"[CACHE] ✅ Hit: {clean_url[:50]}...")
+            print(f"[CACHE] ✅ Hit: {clean_url[:50]}...", flush=True)
             return ScrapeResponse(**cached)
     
     # 2. PRIORIDADE: Usar API oficial do ML (sem bloqueios!)
     if ML_API_AVAILABLE:
-        print(f"[ML_API] 🔍 Buscando via API oficial...")
+        print(f"[ML_API] 🔍 Buscando via API oficial...", flush=True)
         try:
             result = await get_product_info(clean_url)
             if result:
-                print(f"[ML_API] ✅ Sucesso! {result.get('title', '')[:40]}...")
+                print(f"[ML_API] ✅ Sucesso! {result.get('title', '')[:40]}...", flush=True)
                 if CACHE_ENABLED:
                     scrape_cache.set(clean_url, result)
                 return ScrapeResponse(**result)
             else:
-                print(f"[ML_API] ⚠️ API não retornou dados, tentando scraper...")
+                print(f"[ML_API] ⚠️ API não retornou dados, tentando scraper...", flush=True)
         except Exception as e:
-            print(f"[ML_API] ❌ Erro: {e}")
+            print(f"[ML_API] ❌ Erro: {e}", flush=True)
     
     # 3. Fallback: Usar scraping com Playwright
     if SCRAPER_AVAILABLE:
-        print(f"[SCRAPER] 🔍 Buscando via Playwright (fallback)...")
+        print(f"[SCRAPER] 🔍 Buscando via Playwright (fallback)...", flush=True)
         try:
             result = await Scraper.scrape_mercadolivre(clean_url)
             if result:
-                print(f"[SCRAPER] 📷 ImageURL: {result.get('imageUrl', 'NENHUMA')[:80] if result.get('imageUrl') else 'NENHUMA'}...")
+                print(f"[SCRAPER] 📷 ImageURL: {result.get('imageUrl', 'NENHUMA')[:80] if result.get('imageUrl') else 'NENHUMA'}...", flush=True)
                 if CACHE_ENABLED:
                     scrape_cache.set(clean_url, result)
                 return ScrapeResponse(**result)
         except Exception as e:
-            print(f"[SCRAPER] ❌ Erro: {e}")
+            print(f"[SCRAPER] ❌ Erro: {e}", flush=True)
     
     # Todos os métodos falharam
     raise HTTPException(

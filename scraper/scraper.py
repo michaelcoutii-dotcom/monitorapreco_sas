@@ -110,7 +110,7 @@ class Scraper:
     async def initialize(cls):
         """Initializes Playwright and launches a persistent browser instance."""
         if cls.browser and cls.browser.is_connected():
-            print("[INFO] Scraper already initialized.")
+            print("[INFO] Scraper already initialized.", flush=True)
             return
         
         cls.playwright = await async_playwright().start()
@@ -123,7 +123,7 @@ class Scraper:
                 "--no-default-browser-check",
             ]
         )
-        print("[INFO] Persistent browser instance launched.")
+        print("[INFO] Persistent browser instance launched.", flush=True)
 
     @classmethod
     async def close(cls):
@@ -132,7 +132,7 @@ class Scraper:
             await cls.browser.close()
         if cls.playwright:
             await cls.playwright.stop()
-        print("[INFO] Browser instance closed.")
+        print("[INFO] Browser instance closed.", flush=True)
         
     @classmethod
     def is_initialized(cls) -> bool:
@@ -158,10 +158,10 @@ class Scraper:
             # If this wasn't the last attempt, wait before retrying
             if attempt < MAX_RETRIES - 1:
                 wait_time = INITIAL_RETRY_DELAY * (2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
-                print(f"[INFO] 🔄 Tentativa {attempt + 1} falhou. Aguardando {wait_time}s antes de tentar novamente...")
+                print(f"[INFO] 🔄 Tentativa {attempt + 1} falhou. Aguardando {wait_time}s antes de tentar novamente...", flush=True)
                 await asyncio.sleep(wait_time)
         
-        print(f"[ERROR] ❌ Scrape falhou após {MAX_RETRIES} tentativas para {url}")
+        print(f"[ERROR] ❌ Scrape falhou após {MAX_RETRIES} tentativas para {url}", flush=True)
         return None
 
     @classmethod
@@ -196,7 +196,7 @@ class Scraper:
 
             await cls._block_unnecessary_requests(page)
 
-            print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
+            print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}", flush=True)
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
             await page.wait_for_timeout(random.randint(1500, 2500))
@@ -214,7 +214,7 @@ class Scraper:
             
             is_blocked = any(ind.lower() in page_title.lower() for ind in real_block_indicators)
             if is_blocked:
-                print(f"[WARN] ⚠️ Bloqueio detectado no título")
+                print(f"[WARN] ⚠️ Bloqueio detectado no título", flush=True)
                 ScraperStats.log_failure(blocked=True)
                 return None
 
@@ -222,21 +222,21 @@ class Scraper:
             
             page_title = await page.title()
             page_url = page.url
-            print(f"[DEBUG] 📄 Título da página: {page_title[:80] if page_title else 'VAZIO'}")
-            print(f"[DEBUG] 📄 URL final: {page_url[:80]}")
+            print(f"[DEBUG] 📄 Título da página: {page_title[:80] if page_title else 'VAZIO'}", flush=True)
+            print(f"[DEBUG] 📄 URL final: {page_url[:80]}", flush=True)
             
             try:
                 body_text = await page.inner_text("body")
                 if body_text:
-                    print(f"[DEBUG] 📄 Body (primeiros 200 chars): {body_text[:200].replace(chr(10), ' ')}")
+                    print(f"[DEBUG] 📄 Body (primeiros 200 chars): {body_text[:200].replace(chr(10), ' ')}", flush=True)
             except:
-                print("[DEBUG] ⚠️ Não foi possível ler body text")
+                print("[DEBUG] ⚠️ Não foi possível ler body text", flush=True)
             
             if "error" in page_url.lower() or "captcha" in page_url.lower():
-                print(f"[WARN] ⚠️ Página de erro/captcha detectada!")
+                print(f"[WARN] ⚠️ Página de erro/captcha detectada!", flush=True)
                 return None
             
-            print("[DEBUG] 🔄 Tentando extração via JavaScript...")
+            print("[DEBUG] 🔄 Tentando extração via JavaScript...", flush=True)
             title = None
             price = None
             
@@ -359,16 +359,16 @@ class Scraper:
                 
                 if js_data:
                     debug = js_data.get('debug', {})
-                    print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, HTML size: {debug.get('pageHtml', 0)}")
+                    print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, HTML size: {debug.get('pageHtml', 0)}", flush=True)
                     
                     if js_data.get('title'):
                         title = js_data['title']
-                        print(f"[DEBUG] 📝 Título: {title[:50]}...")
+                        print(f"[DEBUG] 📝 Título: {title[:50]}...", flush=True)
                     if js_data.get('price'):
                         price = js_data['price']
-                        print(f"[DEBUG] 💰 Preço: R$ {price:.2f}")
+                        print(f"[DEBUG] 💰 Preço: R$ {price:.2f}", flush=True)
             except Exception as e:
-                print(f"[DEBUG] JS extraction failed: {e}")
+                print(f"[DEBUG] JS extraction failed: {e}", flush=True)
             
             if not title:
                 title_selectors = [
@@ -385,7 +385,7 @@ class Scraper:
                             raw_title = await title_element.inner_text()
                             if raw_title and raw_title.strip() and len(raw_title.strip()) > 5:
                                 title = raw_title.strip()
-                                print(f"[DEBUG] 📝 Título (CSS): {title[:50]}...")
+                                print(f"[DEBUG] 📝 Título (CSS): {title[:50]}...", flush=True)
                                 break
                     except:
                         continue
@@ -411,7 +411,7 @@ class Scraper:
                                     pass
                                 price = normalize_price(f"{price_int},{price_cents}")
                                 if price and price > 0:
-                                    print(f"[DEBUG] 💰 Preço (CSS): R$ {price:.2f}")
+                                    print(f"[DEBUG] 💰 Preço (CSS): R$ {price:.2f}", flush=True)
                                     break
                     except:
                         continue
@@ -432,7 +432,7 @@ class Scraper:
                         src = await image_element.get_attribute("src")
                         if src and src.startswith("http") and "mlstatic" in src:
                             image_url = src
-                            print(f"[DEBUG] 📷 Imagem encontrada: {image_url[:60]}...")
+                            print(f"[DEBUG] 📷 Imagem encontrada: {image_url[:60]}...", flush=True)
                             break
                 except:
                     continue
@@ -444,26 +444,26 @@ class Scraper:
                         src = await img.get_attribute("src")
                         if src and "http" in src and ("D_NQ" in src or "O_" in src):
                             image_url = src
-                            print(f"[DEBUG] 📷 Imagem (fallback): {image_url[:60]}...")
+                            print(f"[DEBUG] 📷 Imagem (fallback): {image_url[:60]}...", flush=True)
                             break
                 except:
                     pass
             
             if not title or price is None:
-                print(f"[WARN] Dados incompletos. Título: {title}, Preço: {price}")
+                print(f"[WARN] Dados incompletos. Título: {title}, Preço: {price}", flush=True)
                 ScraperStats.log_failure()
                 return None
 
-            print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f}")
+            print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f}", flush=True)
             ScraperStats.log_success()
             return {"title": title, "price": price, "imageUrl": image_url}
 
         except PlaywrightTimeout:
-            print(f"[WARN] [Tentativa {attempt_num + 1}] Timeout ao processar página: {url}")
+            print(f"[WARN] [Tentativa {attempt_num + 1}] Timeout ao processar página: {url}", flush=True)
             ScraperStats.log_failure()
             return None
         except Exception as e:
-            print(f"[WARN] [Tentativa {attempt_num + 1}] Falha ao fazer scrape de {url}: {str(e)}")
+            print(f"[WARN] [Tentativa {attempt_num + 1}] Falha ao fazer scrape de {url}: {str(e)}", flush=True)
             ScraperStats.log_failure()
             return None
         finally:
@@ -480,28 +480,28 @@ class Scraper:
 async def main():
     test_url = "https://www.mercadolivre.com.br/cadeira-escritorio-ergonmica-sensetup-cosy-t03-preto-mesh-reclinavel-com-apoio-de-bracos-3d/p/MLB24578456"
     
-    print("=" * 50)
-    print("Testing Async Mercado Livre Scraper")
-    print("=" * 50)
+    print("=" * 50, flush=True)
+    print("Testing Async Mercado Livre Scraper", flush=True)
+    print("=" * 50, flush=True)
     
     await Scraper.initialize()
     
-    print(f"URL: {test_url}")
-    print("-" * 50)
+    print(f"URL: {test_url}", flush=True)
+    print("-" * 50, flush=True)
     
     result = await Scraper.scrape_mercadolivre(test_url)
     
     if result:
-        print("✅ Success!")
-        print(f"   Title: {result['title']}")
-        print(f"   Price: R$ {result['price']:.2f}")
-        print(f"   Image URL: {result['imageUrl']}")
+        print("✅ Success!", flush=True)
+        print(f"   Title: {result['title']}", flush=True)
+        print(f"   Price: R$ {result['price']:.2f}", flush=True)
+        print(f"   Image URL: {result['imageUrl']}", flush=True)
     else:
-        print("❌ Failed to scrape product data")
+        print("❌ Failed to scrape product data", flush=True)
     
     await Scraper.close()
     
-    print("=" * 50)
+    print("=" * 50, flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
