@@ -57,3 +57,6 @@ debug_*.py
 # Backups (keep .gitignore inside)
 backups/*
 !backups/.gitignore
+
+# Scraper state
+scraper/cookies.json

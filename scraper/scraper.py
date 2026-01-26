@@ -2,6 +2,13 @@
 Mercado Livre Price Scraper (Asynchronous)
 Uses a persistent Playwright browser instance to efficiently extract product data.
 
+-- ATENÇÃO --
+Este scraper (Playwright) é um método de fallback e é SENSÍVEL a bloqueios
+e CAPTCHAs do Mercado Livre. Para uma operação estável em produção,
+é ALTAMENTE RECOMENDADO configurar o método principal via API oficial.
+Veja o README.md para mais detalhes sobre como configurar as credenciais da API.
+-- ATENÇÃO --
+
 PROTEÇÕES IMPLEMENTADAS:
 1. Múltiplos seletores fallback para cada elemento
 2. User-Agents rotativos e realistas
@@ -13,8 +20,14 @@ PROTEÇÕES IMPLEMENTADAS:
 import asyncio
 import re
 import random
+import os
 from datetime import datetime
 from playwright.async_api import async_playwright, Playwright, Browser, Page, TimeoutError as PlaywrightTimeout
+from playwright_stealth import stealth_async
+
+# --- Adicionado para persistência de cookies ---
+COOKIES_FILE = "cookies.json"
+# ---------------------------------------------
 
 # List of resource types to block for faster scraping
 # NOTE: Não bloquear 'image' para poder pegar a URL da imagem do produto
@@ -162,32 +175,35 @@ class Scraper:
 
         context = None
         try:
-            # Seleciona User-Agent aleatório para parecer mais humano
             user_agent = random.choice(USER_AGENTS)
             
-            # Create a new, isolated browser context for this request
+            # --- Lógica de Cookies ---
+            storage_state = COOKIES_FILE if os.path.exists(COOKIES_FILE) else None
+            
             context = await cls.browser.new_context(
                 user_agent=user_agent,
                 ignore_https_errors=True,
                 viewport={"width": 1920, "height": 1080},
                 locale="pt-BR",
+                storage_state=storage_state  # Carrega cookies
             )
-            page = await context.new_page()
+            # -------------------------
 
-            # Block unnecessary assets
+            page = await context.new_page()
+            
+            # Aplica patches de stealth para evitar detecção
+            await stealth_async(page)
+
             await cls._block_unnecessary_requests(page)
 
             print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
-            # DELAY para página carregar completamente (aumentado para garantir que o JS do ML execute)
             await page.wait_for_timeout(random.randint(1500, 2500))
             
-            # DETECÇÃO DE BLOQUEIO/CAPTCHA - melhorada para evitar falsos positivos
             page_content = await page.content()
             page_title = await page.title()
             
-            # Detectar bloqueio REAL baseado no título ou conteúdo específico
             real_block_indicators = [
                 "captcha",
                 "não é um robô",
@@ -196,23 +212,19 @@ class Scraper:
                 "access denied"
             ]
             
-            # Verificação rápida de bloqueio (só no título)
             is_blocked = any(ind.lower() in page_title.lower() for ind in real_block_indicators)
             if is_blocked:
                 print(f"[WARN] ⚠️ Bloqueio detectado no título")
                 ScraperStats.log_failure(blocked=True)
                 return None
 
-            # Aguardar um pouco mais para elementos dinâmicos carregarem
             await page.wait_for_timeout(500)
             
-            # ============ DEBUG: Ver o que tem na página ============
             page_title = await page.title()
             page_url = page.url
             print(f"[DEBUG] 📄 Título da página: {page_title[:80] if page_title else 'VAZIO'}")
             print(f"[DEBUG] 📄 URL final: {page_url[:80]}")
             
-            # DEBUG: Salvar primeiros 500 chars do body para ver o que tem
             try:
                 body_text = await page.inner_text("body")
                 if body_text:
@@ -220,12 +232,10 @@ class Scraper:
             except:
                 print("[DEBUG] ⚠️ Não foi possível ler body text")
             
-            # Verificar se há redirecionamento para página de erro ou bloqueio
             if "error" in page_url.lower() or "captcha" in page_url.lower():
                 print(f"[WARN] ⚠️ Página de erro/captcha detectada!")
                 return None
             
-            # ============ EXTRAÇÃO VIA JAVASCRIPT PRIMEIRO (mais confiável) ============
             print("[DEBUG] 🔄 Tentando extração via JavaScript...")
             title = None
             price = None
@@ -242,17 +252,14 @@ class Scraper:
                             pageHtml: document.documentElement.innerHTML.length
                         };
                         
-                        // DEBUG: Contar elementos
                         debug.jsonLdCount = document.querySelectorAll('script[type="application/ld+json"]').length;
                         debug.h1Count = document.querySelectorAll('h1').length;
                         debug.priceElements = document.querySelectorAll('[class*="price"]').length;
                         
-                        // 1. PRIORIDADE MÁXIMA: JSON-LD Schema.org (dados estruturados)
                         const scripts = document.querySelectorAll('script[type="application/ld+json"]');
                         for (const script of scripts) {
                             try {
                                 const data = JSON.parse(script.textContent);
-                                // Formato direto
                                 if (data['@type'] === 'Product') {
                                     if (data.name) title = data.name;
                                     if (data.offers) {
@@ -261,7 +268,6 @@ class Scraper:
                                         else if (offers.lowPrice) price = parseFloat(offers.lowPrice);
                                     }
                                 }
-                                // Formato @graph
                                 if (data['@graph']) {
                                     for (const item of data['@graph']) {
                                         if (item['@type'] === 'Product') {
@@ -277,7 +283,6 @@ class Scraper:
                             } catch (e) {}
                         }
                         
-                        // 2. Se não achou no JSON-LD, tentar meta tags
                         if (!title) {
                             const ogTitle = document.querySelector('meta[property="og:title"]');
                             if (ogTitle) title = ogTitle.content;
@@ -287,9 +292,7 @@ class Scraper:
                             if (metaPrice) price = parseFloat(metaPrice.content);
                         }
                         
-                        // 3. Fallback: extrair do DOM diretamente
                         if (!title) {
-                            // Tentar h1 com classe específica do ML
                             const h1 = document.querySelector('h1.ui-pdp-title') || 
                                        document.querySelector('h1[class*="title"]') ||
                                        document.querySelector('.ui-pdp-header__title-container h1') ||
@@ -298,13 +301,10 @@ class Scraper:
                         }
                         
                         if (!price) {
-                            // Seletores atualizados para 2026
                             const priceSelectors = [
-                                // Container principal de preço
                                 '.ui-pdp-price__second-line .andes-money-amount',
                                 '.ui-pdp-price .andes-money-amount',
                                 '[class*="price"] .andes-money-amount',
-                                // Fração do preço (parte inteira)
                                 '.andes-money-amount__fraction',
                                 '[class*="price-tag-fraction"]'
                             ];
@@ -313,12 +313,9 @@ class Scraper:
                                 const el = document.querySelector(sel);
                                 if (el) {
                                     const text = el.innerText || el.textContent;
-                                    // Limpar e converter o preço brasileiro (1.234,56 ou 1234)
                                     const cleaned = text.replace(/[^\d.,]/g, '');
                                     if (cleaned) {
-                                        // Verificar formato brasileiro (vírgula para decimais)
                                         if (cleaned.includes(',')) {
-                                            // Formato: 1.234,56 ou 234,56
                                             const parts = cleaned.split(',');
                                             const intPart = parts[0].replace(/\./g, '');
                                             const decPart = parts[1] || '00';
@@ -328,14 +325,12 @@ class Scraper:
                                                 break;
                                             }
                                         } else if (cleaned.includes('.') && cleaned.split('.').length > 2) {
-                                            // Formato: 1.234.567 (milhares separados por ponto)
                                             const val = parseFloat(cleaned.replace(/\./g, ''));
                                             if (val > 0 && val < 1000000) {
                                                 price = val;
                                                 break;
                                             }
                                         } else {
-                                            // Número simples
                                             const val = parseFloat(cleaned.replace(/\./g, ''));
                                             if (val > 0 && val < 1000000) {
                                                 price = val;
@@ -347,7 +342,6 @@ class Scraper:
                             }
                         }
                         
-                        // 4. Último fallback: buscar aria-label com preço
                         if (!price) {
                             const ariaPrice = document.querySelector('[aria-label*="reais"]');
                             if (ariaPrice) {
@@ -364,7 +358,6 @@ class Scraper:
                 """)
                 
                 if js_data:
-                    # Log debug info
                     debug = js_data.get('debug', {})
                     print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, HTML size: {debug.get('pageHtml', 0)}")
                     
@@ -377,7 +370,6 @@ class Scraper:
             except Exception as e:
                 print(f"[DEBUG] JS extraction failed: {e}")
             
-            # ============ FALLBACK: Seletores CSS diretos (se JS falhou) ============
             if not title:
                 title_selectors = [
                     "h1.ui-pdp-title",
@@ -424,7 +416,6 @@ class Scraper:
                     except:
                         continue
 
-            # Extração de imagem - múltiplos seletores para garantir
             image_url = None
             image_selectors = [
                 "figure.ui-pdp-gallery__figure img[src*='http']",
@@ -439,7 +430,6 @@ class Scraper:
                     image_element = await page.query_selector(selector)
                     if image_element:
                         src = await image_element.get_attribute("src")
-                        # Verificar se é uma URL válida de imagem
                         if src and src.startswith("http") and "mlstatic" in src:
                             image_url = src
                             print(f"[DEBUG] 📷 Imagem encontrada: {image_url[:60]}...")
@@ -447,7 +437,6 @@ class Scraper:
                 except:
                     continue
             
-            # Fallback: tentar pegar qualquer imagem grande do produto
             if not image_url:
                 try:
                     all_images = await page.query_selector_all("img[src*='mlstatic']")
@@ -479,6 +468,9 @@ class Scraper:
             return None
         finally:
             if context:
+                # --- Salvar cookies para a próxima vez ---
+                await context.storage_state(path=COOKIES_FILE)
+                # -----------------------------------------
                 await context.close()
 
 
