@@ -27,8 +27,12 @@ RUN mkdir -p /app/data
 # Expose port
 EXPOSE 8081
 
-# JVM optimizations for containers with limited memory (Railway free tier)
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=50.0 -XX:+UseSerialGC -Xms128m -Xmx256m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+# JVM optimizations for containers (Railway dynamically allocates memory)
+# - UseContainerSupport: JVM detects container memory limits
+# - MaxRAMPercentage=75: Use up to 75% of available RAM (leaves room for OS)
+# - UseG1GC: Better for containers with more memory, good pause times
+# - TieredCompilation: Faster startup
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
 # Run the application with optimized settings
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
