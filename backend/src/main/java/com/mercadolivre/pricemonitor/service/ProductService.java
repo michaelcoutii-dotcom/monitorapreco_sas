@@ -117,14 +117,15 @@ public class ProductService {
         log.info("Removed product with ID: {}", id);
     }
 
-    // Limite de produtos para usuários não verificados (compartilhado com controller)
-    public static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
+    // Limite de produtos para usuários não verificados (fase de teste)
+    public static final int UNVERIFIED_USER_PRODUCT_LIMIT = 4;
 
     /**
      * Adds a new product to monitor. Scrapes the initial price immediately using a blocking call.
      * This is acceptable for a single, user-initiated action.
      * 
-     * Users with unverified email are limited to 7 products.
+     * Users with unverified email are limited to 4 products.
+     * After email verification, users can add unlimited products.
      */
     @Transactional
     public Product addProduct(String url, Long userId) {
