@@ -308,16 +308,24 @@ public class ProductService {
         if (newPrice < oldPrice) {
             logPriceChange("PRICE DROP 🔻", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceDrop()) {
+                log.info("📧 Tentando enviar email de queda de preço para: {} | Brevo configurado: {}", 
+                    user.getEmail(), brevoEmailService.isConfigured());
                 brevoEmailService.sendPriceDropNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
                 // Also send Telegram notification
                 telegramService.sendPriceDropNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
+            } else {
+                log.info("📧 Notificação de queda de preço desativada para produto: {}", product.getName());
             }
         } else if (newPrice > oldPrice) {
             logPriceChange("PRICE INCREASE 📈", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceIncrease()) {
+                log.info("📧 Tentando enviar email de aumento de preço para: {} | Brevo configurado: {}", 
+                    user.getEmail(), brevoEmailService.isConfigured());
                 brevoEmailService.sendPriceIncreaseNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
                 // Also send Telegram notification
                 telegramService.sendPriceIncreaseNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
+            } else {
+                log.info("📧 Notificação de aumento de preço desativada para produto: {}", product.getName());
             }
         }
     }
