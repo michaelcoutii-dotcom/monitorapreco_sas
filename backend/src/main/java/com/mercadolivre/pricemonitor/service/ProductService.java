@@ -182,7 +182,9 @@ public class ProductService {
     /**
      * Updates a single product's data based on a fresh scrape.
      * This method is transactional and handles all database and notification logic.
-     * Only saves to price history when the price actually changes.
+     * Saves to price history when:
+     * 1. The price actually changes, OR
+     * 2. At least once per day (for statistics purposes)
      */
     @Transactional
     public void updateSingleProduct(Product product, ScrapeResponse scrapeData) {
@@ -213,11 +215,28 @@ public class ProductService {
 
         productRepository.save(product);
 
-        // Só salva no histórico se o preço REALMENTE mudou
-        if (priceChanged) {
+        // Verificar se deve salvar no histórico
+        boolean shouldSaveHistory = priceChanged;
+        
+        // Se o preço não mudou, verificar se já tem registro hoje
+        if (!priceChanged) {
+            List<PriceHistory> recentHistory = priceHistoryRepository.findByProductIdSince(
+                product.getId(), 
+                LocalDateTime.now().minusHours(12) // Verifica últimas 12 horas
+            );
+            // Se não tem registro nas últimas 12h, salva para ter dados de estatísticas
+            if (recentHistory.isEmpty()) {
+                shouldSaveHistory = true;
+                log.debug("📊 Salvando histórico periódico para '{}' (sem mudança, mas 12h+ desde último registro)", product.getName());
+            }
+        }
+
+        if (shouldSaveHistory) {
             PriceHistory history = new PriceHistory(product, newPrice);
             priceHistoryRepository.save(history);
-            log.info("📊 Histórico salvo: '{}' - R$ {} → R$ {}", product.getName(), oldPrice, newPrice);
+            if (priceChanged) {
+                log.info("📊 Histórico salvo: '{}' - R$ {} → R$ {}", product.getName(), oldPrice, newPrice);
+            }
         }
 
         log.info("✅ Verificado '{}': R$ {} ({})", 

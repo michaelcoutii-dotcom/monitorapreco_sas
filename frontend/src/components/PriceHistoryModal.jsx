@@ -60,28 +60,81 @@ export default function PriceHistoryModal({ product, onClose, open }) {
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const avgPrice = (prices.reduce((sum, price) => sum + price, 0) / prices.length);
+    
+    // Verificar se tem variação de preço
+    const hasVariation = minPrice !== maxPrice;
 
     return (
       <div className="p-6">
+        {/* Banner informativo se não tem variação */}
+        {!hasVariation && history.length <= 2 && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-700">
+              📊 <strong>Produto recém-adicionado.</strong> As estatísticas serão mais precisas após algumas variações de preço.
+            </p>
+          </div>
+        )}
+        
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatCard title="Menor Preço" value={`R$ ${minPrice.toFixed(2)}`} colorClass={{ bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600', textDark: 'text-green-700' }} />
-          <StatCard title="Preço Médio" value={`R$ ${avgPrice.toFixed(2)}`} colorClass={{ bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', textDark: 'text-blue-700' }} />
-          <StatCard title="Maior Preço" value={`R$ ${maxPrice.toFixed(2)}`} colorClass={{ bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-600', textDark: 'text-red-700' }} />
+          <StatCard 
+            title="Menor Preço" 
+            value={`R$ ${minPrice.toFixed(2)}`} 
+            colorClass={{ 
+              bg: hasVariation ? 'bg-green-50' : 'bg-gray-50', 
+              border: hasVariation ? 'border-green-200' : 'border-gray-200', 
+              text: hasVariation ? 'text-green-600' : 'text-gray-500', 
+              textDark: hasVariation ? 'text-green-700' : 'text-gray-600' 
+            }} 
+          />
+          <StatCard 
+            title="Preço Médio" 
+            value={`R$ ${avgPrice.toFixed(2)}`} 
+            colorClass={{ bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', textDark: 'text-blue-700' }} 
+          />
+          <StatCard 
+            title="Maior Preço" 
+            value={`R$ ${maxPrice.toFixed(2)}`} 
+            colorClass={{ 
+              bg: hasVariation ? 'bg-red-50' : 'bg-gray-50', 
+              border: hasVariation ? 'border-red-200' : 'border-gray-200', 
+              text: hasVariation ? 'text-red-600' : 'text-gray-500', 
+              textDark: hasVariation ? 'text-red-700' : 'text-gray-600' 
+            }} 
+          />
         </div>
 
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-800 mb-3">Evolução de Preços</h4>
-          {history.map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <p className="text-sm font-medium text-gray-800">{formatDate(entry.recordedAt)}</p>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-gray-800">Evolução de Preços</h4>
+            <span className="text-xs text-gray-500">{history.length} registro{history.length !== 1 ? 's' : ''}</span>
+          </div>
+          {history.map((entry, index) => {
+            // Calcular variação em relação ao registro anterior
+            const prevEntry = history[index + 1]; // Histórico vem ordenado DESC
+            const priceChange = prevEntry ? entry.price - prevEntry.price : 0;
+            const changePercent = prevEntry ? ((priceChange / prevEntry.price) * 100) : 0;
+            
+            return (
+              <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    priceChange > 0 ? 'bg-red-500' : priceChange < 0 ? 'bg-green-500' : 'bg-blue-500'
+                  }`} />
+                  <p className="text-sm font-medium text-gray-800">{formatDate(entry.recordedAt)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {priceChange !== 0 && (
+                    <span className={`text-xs font-medium ${priceChange > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {priceChange > 0 ? '↑' : '↓'} {Math.abs(changePercent).toFixed(1)}%
+                    </span>
+                  )}
+                  <p className="text-lg font-bold text-gray-900">
+                    R$ {entry.price.toFixed(2)}
+                  </p>
+                </div>
               </div>
-              <p className="text-lg font-bold text-gray-900">
-                R$ {entry.price.toFixed(2)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
