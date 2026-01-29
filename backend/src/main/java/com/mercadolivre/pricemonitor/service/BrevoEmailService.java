@@ -226,6 +226,14 @@ public class BrevoEmailService {
      */
     @Async
     public void sendPriceDropNotification(String userEmail, String productName, String productUrl, Double oldPrice, Double newPrice) {
+        log.info("📧 [BREVO] >>> MÉTODO sendPriceDropNotification CHAMADO para: {} | API Key configurada: {}", 
+            userEmail, isConfigured());
+        
+        if (!isConfigured()) {
+            log.error("📧 [BREVO] ❌ API KEY NÃO CONFIGURADA! Email não será enviado.");
+            return;
+        }
+        
         try {
             double savings = oldPrice - newPrice;
             double percentOff = (savings / oldPrice) * 100;
@@ -289,6 +297,14 @@ public class BrevoEmailService {
      */
     @Async
     public void sendPriceIncreaseNotification(String userEmail, String productName, String productUrl, Double oldPrice, Double newPrice) {
+        log.info("📧 [BREVO] >>> MÉTODO sendPriceIncreaseNotification CHAMADO para: {} | API Key configurada: {}", 
+            userEmail, isConfigured());
+        
+        if (!isConfigured()) {
+            log.error("📧 [BREVO] ❌ API KEY NÃO CONFIGURADA! Email não será enviado.");
+            return;
+        }
+        
         try {
             double increase = newPrice - oldPrice;
             double percentUp = (increase / oldPrice) * 100;
