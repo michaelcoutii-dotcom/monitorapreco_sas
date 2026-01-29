@@ -31,7 +31,7 @@ public class ProductService {
     private final PriceHistoryRepository priceHistoryRepository;
     private final UserRepository userRepository;
     private final ScraperService scraperService;
-    private final EmailService emailService;
+    private final BrevoEmailService brevoEmailService; // Use Brevo API (works on Railway)
     private final NotificationService notificationService;
     private final TelegramService telegramService;
 
@@ -281,14 +281,14 @@ public class ProductService {
         if (newPrice < oldPrice) {
             logPriceChange("PRICE DROP 🔻", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceDrop()) {
-                emailService.sendPriceDropNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
+                brevoEmailService.sendPriceDropNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
                 // Also send Telegram notification
                 telegramService.sendPriceDropNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
             }
         } else if (newPrice > oldPrice) {
             logPriceChange("PRICE INCREASE 📈", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceIncrease()) {
-                emailService.sendPriceIncreaseNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
+                brevoEmailService.sendPriceIncreaseNotification(user.getEmail(), product.getName(), product.getUrl(), oldPrice, newPrice);
                 // Also send Telegram notification
                 telegramService.sendPriceIncreaseNotification(user, product.getName(), product.getUrl(), oldPrice, newPrice);
             }

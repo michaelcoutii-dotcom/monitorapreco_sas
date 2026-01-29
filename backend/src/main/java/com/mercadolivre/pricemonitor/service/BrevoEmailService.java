@@ -220,4 +220,130 @@ public class BrevoEmailService {
             log.error("📧 [BREVO] ❌ Erro ao enviar email de reset: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Send price drop notification email
+     */
+    @Async
+    public void sendPriceDropNotification(String userEmail, String productName, String productUrl, Double oldPrice, Double newPrice) {
+        try {
+            double savings = oldPrice - newPrice;
+            double percentOff = (savings / oldPrice) * 100;
+            
+            log.info("📧 [BREVO] Enviando notificação de queda de preço para: {} (produto: {})", userEmail, productName);
+
+            String subject = String.format("🔻 Preço baixou! %s - Economize R$ %.2f (%.0f%% OFF)", productName, savings, percentOff);
+
+            String htmlBody = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #059669 0%%, #047857 100%%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">🔻 PREÇO BAIXOU!</h1>
+                        <p style="color: #d1fae5; margin: 10px 0 0 0; font-size: 18px;">Economize R$ %.2f</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
+                        <h2 style="color: #333; margin-top: 0;">%s</h2>
+                        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <p style="color: #9ca3af; margin: 0; font-size: 14px; text-decoration: line-through;">Preço anterior</p>
+                                    <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 18px; text-decoration: line-through;">R$ %.2f</p>
+                                </div>
+                                <div style="font-size: 24px;">→</div>
+                                <div>
+                                    <p style="color: #059669; margin: 0; font-size: 14px; font-weight: bold;">Preço atual</p>
+                                    <p style="color: #059669; margin: 5px 0 0 0; font-size: 24px; font-weight: bold;">R$ %.2f</p>
+                                </div>
+                            </div>
+                            <div style="background: #d1fae5; color: #065f46; padding: 10px 15px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: bold;">
+                                %.0f%% DE DESCONTO
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #059669 0%%, #047857 100%%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                🛒 Ver Produto
+                            </a>
+                        </div>
+                    </div>
+                    <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                        <p style="margin: 0;">Você recebeu este email pois está monitorando este produto.</p>
+                        <p style="margin: 10px 0 0 0; color: #64748b;">© 2026 MonitoraPreço - Inteligência Competitiva</p>
+                    </div>
+                </div>
+                """.formatted(savings, productName, oldPrice, newPrice, percentOff, productUrl);
+
+            boolean sent = sendEmail(userEmail, null, subject, htmlBody);
+            
+            if (sent) {
+                log.info("📧 [BREVO] ✅ Notificação de queda de preço enviada para: {}", userEmail);
+            } else {
+                log.error("📧 [BREVO] ❌ Falha ao enviar notificação de queda de preço para: {}", userEmail);
+            }
+
+        } catch (Exception e) {
+            log.error("📧 [BREVO] ❌ Erro ao enviar notificação de queda de preço: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Send price increase notification email
+     */
+    @Async
+    public void sendPriceIncreaseNotification(String userEmail, String productName, String productUrl, Double oldPrice, Double newPrice) {
+        try {
+            double increase = newPrice - oldPrice;
+            double percentUp = (increase / oldPrice) * 100;
+            
+            log.info("📧 [BREVO] Enviando notificação de aumento de preço para: {} (produto: {})", userEmail, productName);
+
+            String subject = String.format("📈 Preço subiu: %s - Aumento de R$ %.2f (%.0f%%)", productName, increase, percentUp);
+
+            String htmlBody = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #dc2626 0%%, #b91c1c 100%%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">📈 PREÇO SUBIU</h1>
+                        <p style="color: #fecaca; margin: 10px 0 0 0; font-size: 18px;">Aumento de R$ %.2f</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
+                        <h2 style="color: #333; margin-top: 0;">%s</h2>
+                        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <p style="color: #9ca3af; margin: 0; font-size: 14px;">Preço anterior</p>
+                                    <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 18px;">R$ %.2f</p>
+                                </div>
+                                <div style="font-size: 24px;">→</div>
+                                <div>
+                                    <p style="color: #dc2626; margin: 0; font-size: 14px; font-weight: bold;">Preço atual</p>
+                                    <p style="color: #dc2626; margin: 5px 0 0 0; font-size: 24px; font-weight: bold;">R$ %.2f</p>
+                                </div>
+                            </div>
+                            <div style="background: #fee2e2; color: #991b1b; padding: 10px 15px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: bold;">
+                                +%.0f%% DE AUMENTO
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                🛒 Ver Produto
+                            </a>
+                        </div>
+                    </div>
+                    <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                        <p style="margin: 0;">Você recebeu este email pois está monitorando este produto.</p>
+                        <p style="margin: 10px 0 0 0; color: #64748b;">© 2026 MonitoraPreço - Inteligência Competitiva</p>
+                    </div>
+                </div>
+                """.formatted(increase, productName, oldPrice, newPrice, percentUp, productUrl);
+
+            boolean sent = sendEmail(userEmail, null, subject, htmlBody);
+            
+            if (sent) {
+                log.info("📧 [BREVO] ✅ Notificação de aumento de preço enviada para: {}", userEmail);
+            } else {
+                log.error("📧 [BREVO] ❌ Falha ao enviar notificação de aumento de preço para: {}", userEmail);
+            }
+
+        } catch (Exception e) {
+            log.error("📧 [BREVO] ❌ Erro ao enviar notificação de aumento de preço: {}", e.getMessage(), e);
+        }
+    }
 }
