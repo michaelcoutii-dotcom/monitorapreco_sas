@@ -28,7 +28,7 @@ export default function Dashboard() {
     const [confirmModal, setConfirmModal] = useState({ open: false, productId: null, productName: '' });
     const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
-    const [emailVerificationModal, setEmailVerificationModal] = useState({ open: false, limit: 2 });
+    const [emailVerificationModal, setEmailVerificationModal] = useState({ open: false, limit: 4 });
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [showTelegramSettings, setShowTelegramSettings] = useState(false);
@@ -416,7 +416,7 @@ export default function Dashboard() {
                                 </Link>
                                 
                                 <button
-                                    onClick={() => setEmailVerificationModal({ open: false, limit: 2 })}
+                                    onClick={() => setEmailVerificationModal({ open: false, limit: 4 })}
                                     className="w-full px-6 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all"
                                 >
                                     Fechar
