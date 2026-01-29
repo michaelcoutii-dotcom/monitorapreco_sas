@@ -37,6 +37,9 @@ public class TelegramService {
     
     @Value("${telegram.use.webhook:false}")
     private boolean useWebhook;
+    
+    @Value("${app.backend.url:}")
+    private String backendUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final UserRepository userRepository;
@@ -53,11 +56,62 @@ public class TelegramService {
             log.info("📱 Telegram Bot configurado: @{}", botUsername);
             if (useWebhook) {
                 log.info("📱 Modo WEBHOOK ativado (produção)");
+                // Registrar webhook automaticamente na inicialização
+                registerWebhook();
             } else {
                 log.info("📱 Modo POLLING ativado (desenvolvimento)");
+                // Em desenvolvimento, deletar webhook caso exista
+                deleteWebhook();
             }
         } else {
             log.warn("⚠️ Telegram Bot NÃO configurado - token vazio");
+        }
+    }
+    
+    /**
+     * Register webhook with Telegram API.
+     * This tells Telegram where to send updates.
+     */
+    private void registerWebhook() {
+        if (backendUrl == null || backendUrl.isBlank()) {
+            log.warn("⚠️ Não foi possível registrar webhook - backendUrl não configurado");
+            return;
+        }
+        
+        try {
+            String webhookUrl = backendUrl + "/api/telegram/webhook";
+            String url = String.format("https://api.telegram.org/bot%s/setWebhook", botToken);
+            
+            Map<String, Object> body = new HashMap<>();
+            body.put("url", webhookUrl);
+            body.put("allowed_updates", new String[]{"message"});
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("✅ Telegram webhook registrado: {}", webhookUrl);
+            } else {
+                log.error("❌ Falha ao registrar webhook: {}", response.getBody());
+            }
+        } catch (Exception e) {
+            log.error("❌ Erro ao registrar webhook: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Delete webhook (for development mode - use polling instead).
+     */
+    private void deleteWebhook() {
+        try {
+            String url = String.format("https://api.telegram.org/bot%s/deleteWebhook", botToken);
+            restTemplate.getForEntity(url, String.class);
+            log.debug("📱 Webhook deletado (modo polling ativo)");
+        } catch (Exception e) {
+            // Silently ignore
         }
     }
 
@@ -99,22 +153,36 @@ public class TelegramService {
      */
     public void processUpdate(Map update) {
         try {
+            log.debug("📱 Processing Telegram update: {}", update);
+            
             Map message = (Map) update.get("message");
-            if (message == null) return;
+            if (message == null) {
+                log.debug("📱 No message in update, skipping");
+                return;
+            }
             
             Map chat = (Map) message.get("chat");
+            if (chat == null || chat.get("id") == null) {
+                log.warn("📱 No chat info in message");
+                return;
+            }
+            
             String chatId = String.valueOf(((Number) chat.get("id")).longValue());
             String text = (String) message.get("text");
             
-            if (text == null) return;
+            if (text == null || text.isBlank()) {
+                log.debug("📱 No text in message from chat {}", chatId);
+                return;
+            }
             
-            log.info("📱 Telegram message received: {} from chat {}", text, chatId);
+            log.info("📱 Telegram message received: '{}' from chat {}", text, chatId);
             
             // Handle /start command with code
             if (text.startsWith("/start")) {
                 String[] parts = text.split(" ");
                 if (parts.length > 1) {
-                    String code = parts[1];
+                    String code = parts[1].trim();
+                    log.info("📱 Attempting to link with code: {} for chat {}", code, chatId);
                     boolean success = linkAccount(code, chatId);
                     if (!success) {
                         sendMessage(chatId, "❌ Código inválido ou expirado.\n\nGere um novo código no painel.");

@@ -118,15 +118,28 @@ public class TelegramController {
      */
     @PostMapping("/webhook")
     public ResponseEntity<?> handleWebhook(@RequestBody Map<String, Object> update) {
-        log.info("📱 Telegram webhook received");
+        log.info("📱 Telegram webhook received: {}", update.keySet());
         
         try {
             // Delegate to TelegramService
             telegramService.processUpdate(update);
+            log.debug("📱 Webhook processed successfully");
         } catch (Exception e) {
-            log.error("❌ Error processing Telegram webhook: {}", e.getMessage());
+            log.error("❌ Error processing Telegram webhook: {}", e.getMessage(), e);
         }
 
+        // Always return OK to Telegram to prevent retries
         return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Get webhook info (for debugging).
+     */
+    @GetMapping("/webhook-info")
+    public ResponseEntity<?> getWebhookInfo() {
+        return ResponseEntity.ok(Map.of(
+            "enabled", telegramService.isEnabled(),
+            "botUsername", telegramService.getBotUsername() != null ? telegramService.getBotUsername() : ""
+        ));
     }
 }
