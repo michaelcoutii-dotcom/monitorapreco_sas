@@ -47,8 +47,10 @@ public class ScraperService {
 
     /**
      * Asynchronously fetches product data.
-     * Para URLs do Mercado Livre, usa apenas a API oficial. Nunca usa o scraper Python.
-     * Para outros sites, pode usar o scraper Python.
+     * Para URLs do Mercado Livre:
+     * - Se tem token OAuth válido, usa a API oficial
+     * - Se não tem token, usa o scraper Python como fallback
+     * Para outros sites, usa o scraper Python.
      *
      * @param productUrl The product URL.
      * @return A CompletableFuture containing the ScrapeResponse, or empty if an error occurs.
@@ -63,11 +65,9 @@ public class ScraperService {
                 log.info("🔑 Usando API oficial do Mercado Livre para: {}", cleanUrl);
                 return fetchFromMercadoLivreApi(cleanUrl);
             } else {
-                log.error("❌ Token Mercado Livre não disponível. Autorização necessária para buscar produto.");
-                // Retorna erro claro para o frontend
-                    return CompletableFuture.completedFuture(
-                        new ScrapeResponse(null, null, null, null)
-                    );
+                // Sem token OAuth - usar scraper Python como fallback
+                log.warn("⚠️ Token Mercado Livre não disponível. Usando scraper Python como fallback.");
+                return fetchFromPythonScraper(cleanUrl);
             }
         }
 

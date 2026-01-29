@@ -1,6 +1,6 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import Toast from './Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
@@ -14,6 +14,14 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Show session expired message if redirected from API
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setToast({ type: 'warning', message: 'Sua sessão expirou. Faça login novamente.' });
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

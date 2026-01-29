@@ -243,6 +243,12 @@ public class MercadoLivreService {
             }
         } catch (Exception e) {
             System.err.println("[ML_API] ❌ Erro ao renovar token: " + e.getMessage());
+            // Invalidar o token em cache e no banco quando refresh falha
+            if (cachedToken != null && cachedToken.getId() != null) {
+                tokenRepository.deleteById(cachedToken.getId());
+                System.out.println("[ML_API] 🗑️ Token inválido removido do banco de dados.");
+            }
+            cachedToken = null;
             throw new RuntimeException("Falha ao renovar token: " + e.getMessage());
         }
     }

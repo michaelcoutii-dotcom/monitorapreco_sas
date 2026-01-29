@@ -20,6 +20,18 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, []);
 
+  // Listen for forced logout events (e.g., from API when token expires)
+  useEffect(() => {
+    const handleForcedLogout = () => {
+      console.log('[INFO] 🔒 Logout forçado - token expirado');
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener('auth:logout', handleForcedLogout);
+    return () => window.removeEventListener('auth:logout', handleForcedLogout);
+  }, []);
+
   const login = (authData) => {
     console.log('[INFO] 🔓 Usuário logado:', authData.email);
     const userData = {

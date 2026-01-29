@@ -15,20 +15,54 @@ const getAuthToken = () => {
 };
 
 /**
+ * Handle unauthorized responses (expired JWT)
+ * Clears storage and redirects to login
+ */
+const handleUnauthorized = () => {
+    console.warn('🔒 Token expirado ou inválido - redirecionando para login');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    // Dispatch custom event so AuthContext can react
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+    // Redirect to login
+    if (window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=true';
+    }
+};
+
+/**
+ * Wrapper for fetch that handles 401 errors
+ */
+const fetchWithAuth = async (url, options = {}) => {
+    const token = getAuthToken();
+    if (!token) {
+        handleUnauthorized();
+        throw new Error('No authentication token found.');
+    }
+
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    // Handle expired token
+    if (response.status === 401 || response.status === 403) {
+        handleUnauthorized();
+        throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    return response;
+};
+
+/**
  * Fetches all products for the logged-in user.
  * @returns {Promise<any[]>} A promise that resolves to an array of products.
  */
 export const getProducts = async () => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products`);
 
     if (!response.ok) {
         throw new Error('Failed to fetch products.');
@@ -43,16 +77,10 @@ export const getProducts = async () => {
  * @returns {Promise<any>} A promise that resolves to the newly added product.
  */
 export const addProduct = async (url) => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products`, {
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({ url })
     });
@@ -77,16 +105,8 @@ export const addProduct = async (url) => {
  * @returns {Promise<void>} A promise that resolves when the product is deleted.
  */
 export const deleteProduct = async (productId) => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products/${productId}`, {
-        method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products/${productId}`, {
+        method: 'DELETE'
     });
 
     if (!response.ok) {
@@ -99,16 +119,8 @@ export const deleteProduct = async (productId) => {
  * @returns {Promise<any>} A promise that resolves with the backend response.
  */
 export const refreshPrices = async () => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products/refresh`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products/refresh`, {
+        method: 'POST'
     });
 
     if (!response.ok) {
@@ -126,16 +138,7 @@ export const refreshPrices = async () => {
 export const getPriceHistory = async (productId) => {
     if (!productId) return Promise.resolve([]);
 
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products/${productId}/history`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products/${productId}/history`);
 
     if (!response.ok) {
         throw new Error('Failed to fetch price history.');
@@ -150,16 +153,7 @@ export const getPriceHistory = async (productId) => {
  * @returns {Promise<any>} A promise that resolves to analytics data.
  */
 export const getAnalytics = async (days = 30) => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products/analytics?days=${days}`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products/analytics?days=${days}`);
 
     if (!response.ok) {
         throw new Error('Failed to fetch analytics.');
@@ -173,16 +167,8 @@ export const getAnalytics = async (days = 30) => {
  * @returns {Promise<any>} A promise that resolves to cleanup result.
  */
 export const cleanupHistory = async () => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error('No authentication token found.');
-    }
-
-    const response = await fetch(`${getApiUrl()}/api/products/cleanup-history`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+    const response = await fetchWithAuth(`${getApiUrl()}/api/products/cleanup-history`, {
+        method: 'POST'
     });
 
     if (!response.ok) {
@@ -200,12 +186,7 @@ export const cleanupHistory = async () => {
  * Get Telegram integration status.
  */
 export const getTelegramStatus = async () => {
-    const token = getAuthToken();
-    if (!token) throw new Error('No authentication token found.');
-
-    const response = await fetch(`${getApiUrl()}/api/telegram/status`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const response = await fetchWithAuth(`${getApiUrl()}/api/telegram/status`);
 
     if (!response.ok) throw new Error('Failed to get Telegram status.');
     return response.json();
@@ -215,12 +196,8 @@ export const getTelegramStatus = async () => {
  * Generate a code to link Telegram account.
  */
 export const generateTelegramCode = async () => {
-    const token = getAuthToken();
-    if (!token) throw new Error('No authentication token found.');
-
-    const response = await fetch(`${getApiUrl()}/api/telegram/generate-code`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+    const response = await fetchWithAuth(`${getApiUrl()}/api/telegram/generate-code`, {
+        method: 'POST'
     });
 
     if (!response.ok) throw new Error('Failed to generate Telegram code.');
@@ -231,12 +208,8 @@ export const generateTelegramCode = async () => {
  * Unlink Telegram account.
  */
 export const unlinkTelegram = async () => {
-    const token = getAuthToken();
-    if (!token) throw new Error('No authentication token found.');
-
-    const response = await fetch(`${getApiUrl()}/api/telegram/unlink`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+    const response = await fetchWithAuth(`${getApiUrl()}/api/telegram/unlink`, {
+        method: 'POST'
     });
 
     if (!response.ok) throw new Error('Failed to unlink Telegram.');
@@ -247,13 +220,9 @@ export const unlinkTelegram = async () => {
  * Toggle Telegram notifications.
  */
 export const toggleTelegramNotifications = async (enabled) => {
-    const token = getAuthToken();
-    if (!token) throw new Error('No authentication token found.');
-
-    const response = await fetch(`${getApiUrl()}/api/telegram/toggle`, {
+    const response = await fetchWithAuth(`${getApiUrl()}/api/telegram/toggle`, {
         method: 'POST',
         headers: { 
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ enabled })
