@@ -202,6 +202,21 @@ async def get_stats():
     }
 
 
+@app.post("/clear-cache")
+async def clear_cache():
+    """
+    Limpa o cache do scraper para forçar novas requisições.
+    """
+    stats_before = scrape_cache.stats()
+    scrape_cache.clear()
+    print("[INFO] 🗑️ Cache limpo via API", flush=True)
+    return {
+        "success": True,
+        "message": "Cache limpo com sucesso",
+        "cleared_entries": stats_before.get("total_entries", 0)
+    }
+
+
 @app.get("/health")
 async def health_check():
     """

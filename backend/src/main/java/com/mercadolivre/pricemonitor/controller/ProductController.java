@@ -329,4 +329,48 @@ public class ProductController {
                     .body(Map.of("error", "Failed to cleanup history"));
         }
     }
+
+    /**
+     * Force immediate price update for all user's products.
+     * This bypasses the 30-minute scheduler and updates prices NOW.
+     */
+    @PostMapping("/force-update")
+    public ResponseEntity<?> forceUpdateAllProducts() {
+        try {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            log.info("🔄 Force update requested by userId: {}", userId);
+            
+            List<Product> products = productService.getProductsByUserId(userId);
+            
+            if (products.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Nenhum produto para atualizar"
+                ));
+            }
+            
+            // Trigger immediate update for all user's products
+            int count = 0;
+            for (Product product : products) {
+                try {
+                    productService.updateSingleProductAsync(product);
+                    count++;
+                } catch (Exception e) {
+                    log.error("Failed to trigger update for product {}: {}", product.getId(), e.getMessage());
+                }
+            }
+            
+            log.info("🔄 Force update triggered for {} products", count);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", String.format("Atualização forçada iniciada para %d produtos", count),
+                "productsCount", count
+            ));
+            
+        } catch (Exception e) {
+            log.error("❌ Error forcing update: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to force update"));
+        }
+    }
 }

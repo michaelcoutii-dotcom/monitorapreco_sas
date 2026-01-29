@@ -197,6 +197,15 @@ public class ProductService {
     }
 
     /**
+     * Triggers an async update for a single product.
+     * Used for force-update feature.
+     */
+    public void updateSingleProductAsync(Product product) {
+        log.info("🔄 Triggering async update for product: {} ({})", product.getName(), product.getId());
+        asyncScrapingService.scrapeProductInBackground(product.getId(), product.getUrl());
+    }
+
+    /**
      * Updates a single product's data based on a fresh scrape.
      * This method is transactional and handles all database and notification logic.
      * Saves to price history when:
