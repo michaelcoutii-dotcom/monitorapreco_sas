@@ -49,6 +49,33 @@ public class ProductService {
         return productRepository.findById(id);
     }
 
+    /**
+     * Check if a product with the given URL already exists for a user.
+     * Normalizes URL before checking to handle variations.
+     */
+    public boolean existsByUrlAndUserId(String url, Long userId) {
+        String normalizedUrl = normalizeUrl(url);
+        // Check both exact match and normalized match
+        return productRepository.existsByUrlAndUserId(url, userId) ||
+               productRepository.existsByUrlAndUserId(normalizedUrl, userId);
+    }
+
+    /**
+     * Normalize URL to avoid duplicates with different parameters/fragments.
+     */
+    private String normalizeUrl(String url) {
+        if (url == null) return null;
+        // Remove fragments
+        if (url.contains("#")) {
+            url = url.split("#")[0];
+        }
+        // Remove query parameters
+        if (url.contains("?")) {
+            url = url.split("\\?")[0];
+        }
+        return url.trim();
+    }
+
     public List<PriceHistory> getPriceHistory(Long productId) {
         return productRepository.findById(productId)
                 .map(priceHistoryRepository::findTop30ByProductOrderByRecordedAtDesc)

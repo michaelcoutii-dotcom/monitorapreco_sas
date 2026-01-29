@@ -89,6 +89,8 @@ export default function Dashboard() {
             // Check if it's email verification limit error
             if (error.code === 'EMAIL_NOT_VERIFIED') {
                 setEmailVerificationModal({ open: true, limit: error.limit || 2 });
+            } else if (error.code === 'DUPLICATE_PRODUCT') {
+                addToast(`⚠️ Você já está monitorando este produto!`, 'warning');
             } else {
                 addToast(`❌ ${error.message}`, 'error');
             }

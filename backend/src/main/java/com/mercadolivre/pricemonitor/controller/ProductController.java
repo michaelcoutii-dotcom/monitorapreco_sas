@@ -96,6 +96,17 @@ public class ProductController {
                         .body(Map.of("error", "Erro interno: usuário não encontrado"));
             }
 
+            // Check if product with same URL already exists for this user
+            if (productService.existsByUrlAndUserId(url, userId)) {
+                log.warn("⚠️ User {} tried to add duplicate product: {}", user.getEmail(), url);
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of(
+                            "error", "Produto já adicionado",
+                            "message", "Você já está monitorando este produto!",
+                            "code", "DUPLICATE_PRODUCT"
+                        ));
+            }
+
             // Check product limit for unverified users (plano gratuito)
             if (!Boolean.TRUE.equals(user.getEmailVerified())) {
                 List<Product> currentProducts = productService.getProductsByUserId(userId);
