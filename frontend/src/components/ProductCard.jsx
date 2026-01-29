@@ -210,22 +210,19 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
                       ? 'text-red-600'
                       : 'text-slate-800'
                 }`}>
-                  R$ {product.originalPrice && product.originalPrice > product.currentPrice 
-                    ? product.originalPrice.toFixed(2) 
-                    : product.currentPrice?.toFixed(2) || '0.00'}
+                  R$ {product.currentPrice?.toFixed(2) || '0.00'}
                 </div>
                 
-                {/* Se tem promoção, mostra preço com desconto embaixo */}
-                {product.originalPrice && product.originalPrice > product.currentPrice && (
-                  <div className="mt-2 flex items-center gap-2">
+                {/* Se tem desconto, mostra preço com desconto calculado embaixo */}
+                {product.discountPercent > 0 && (
+                  <div className="mt-2 flex items-center gap-2 bg-emerald-50 rounded-lg p-2">
+                    <span className="text-sm text-slate-600">Com desconto:</span>
                     <span className="text-lg font-bold text-emerald-600">
-                      R$ {product.currentPrice?.toFixed(2) || '0.00'}
+                      R$ {(product.currentPrice * (1 - product.discountPercent / 100)).toFixed(2)}
                     </span>
-                    {product.discountPercent > 0 && (
-                      <span className="text-xs font-bold text-white bg-emerald-500 px-2 py-1 rounded-full animate-pulse">
-                        🏷️ {product.discountPercent}% OFF
-                      </span>
-                    )}
+                    <span className="text-xs font-bold text-white bg-emerald-500 px-2 py-1 rounded-full">
+                      🏷️ {product.discountPercent}% OFF
+                    </span>
                   </div>
                 )}
               </div>
