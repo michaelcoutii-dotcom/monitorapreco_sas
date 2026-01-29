@@ -123,7 +123,7 @@ class ProductServiceTest {
     @DisplayName("Deve atualizar produto com novo preço")
     void deveAtualizarProdutoComNovoPreco() {
         // Arrange
-        ScrapeResponse scrapeData = new ScrapeResponse("Produto Atualizado", 89.90, "http://img.jpg", null);
+        ScrapeResponse scrapeData = new ScrapeResponse("Produto Atualizado", 89.90, "http://img.jpg", null, null, null);
         
         // Act
         productService.updateSingleProduct(sampleProduct, scrapeData);
@@ -140,7 +140,7 @@ class ProductServiceTest {
     @DisplayName("Não deve atualizar produto com dados inválidos")
     void naoDeveAtualizarProdutoComDadosInvalidos() {
         // Arrange
-        ScrapeResponse invalidData = new ScrapeResponse(null, null, null, null);
+        ScrapeResponse invalidData = new ScrapeResponse(null, null, null, null, null, null);
 
         // Act
         productService.updateSingleProduct(sampleProduct, invalidData);
