@@ -23,11 +23,12 @@ from config import CACHE_ENABLED, get_config_summary
 
 # Importar API do ML como método principal (sem bloqueios!)
 try:
-    from ml_api import get_product_info, MLApiStats
+    from ml_api import get_product_info, MLApiStats, fetch_product_public
     ML_API_AVAILABLE = True
-except ImportError:
+    print("[INFO] ✅ ML API disponível (inclui modo público sem auth)", flush=True)
+except ImportError as e:
     ML_API_AVAILABLE = False
-    print("[WARN] ML API não disponível!", flush=True)
+    print(f"[WARN] ML API não disponível: {e}", flush=True)
 
 # Importar scraper como fallback
 try:

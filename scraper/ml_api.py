@@ -1,6 +1,7 @@
 """
 Mercado Livre API Client
 Cliente para a API pública oficial do Mercado Livre, com lógica de auto-refresh de token.
+Também suporta consultas públicas sem autenticação para dados básicos de produtos.
 """
 import httpx
 import re
@@ -9,7 +10,10 @@ import asyncio
 from typing import Optional, Dict, Any
 
 # Módulos locais
-from scraper import token_manager
+try:
+    from scraper import token_manager
+except ImportError:
+    import token_manager
 
 
 def _mask(s: Optional[str]) -> str:
@@ -211,4 +215,68 @@ async def get_product_info(url: str) -> Optional[Dict[str, Any]]:
         return None
     
     print(f"[ML_API] 🔍 Buscando produto: {item_id}", flush=True)
-    return await fetch_product_from_api(item_id)
+    
+    # Primeiro tenta com autenticação OAuth (melhor para múltiplos usuários)
+    result = await fetch_product_from_api(item_id)
+    if result:
+        return result
+    
+    # Se OAuth falhou, tenta API pública como último recurso
+    print(f"[ML_API] ⚠️ OAuth falhou, tentando API pública...", flush=True)
+    return await fetch_product_public(item_id)
+
+
+async def fetch_product_public(item_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Busca informações do produto usando a API PÚBLICA do Mercado Livre.
+    NÃO requer autenticação OAuth - funciona sempre!
+    
+    ATENÇÃO: A API pública tem rate limit mais restritivo.
+    Use apenas como fallback quando OAuth não estiver disponível.
+    """
+    url = f"{ML_API_BASE_URL}/items/{item_id}"
+    
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            # Requisição SEM autenticação
+            response = await client.get(url)
+        
+        if response.status_code == 429:
+            MLApiStats.record_rate_limit()
+            print(f"[ML_API_PUBLIC] ⚠️ Rate limit atingido para {item_id}", flush=True)
+            return None
+        
+        if response.status_code != 200:
+            MLApiStats.record_error()
+            print(f"[ML_API_PUBLIC] ❌ Erro {response.status_code} para {item_id}", flush=True)
+            return None
+        
+        data = response.json()
+        title = data.get("title", "")
+        price = data.get("price", 0)
+        
+        # Buscar imagem
+        pictures = data.get("pictures", [])
+        image_url = None
+        if pictures:
+            image_url = pictures[0].get("secure_url") or pictures[0].get("url")
+        if not image_url:
+            image_url = data.get("thumbnail")
+        
+        if title and price:
+            MLApiStats.record_success()
+            print(f"[ML_API_PUBLIC] ✅ Sucesso (sem auth): {title[:50]}... - R$ {price}", flush=True)
+            return {"title": title, "price": float(price), "imageUrl": image_url}
+        
+        MLApiStats.record_error()
+        print(f"[ML_API_PUBLIC] ⚠️ Dados incompletos: title={bool(title)}, price={bool(price)}", flush=True)
+        return None
+            
+    except httpx.TimeoutException:
+        MLApiStats.record_error()
+        print(f"[ML_API_PUBLIC] ⏱️ Timeout para {item_id}", flush=True)
+        return None
+    except Exception as e:
+        MLApiStats.record_error()
+        print(f"[ML_API_PUBLIC] ❌ Exceção: {e}", flush=True)
+        return None

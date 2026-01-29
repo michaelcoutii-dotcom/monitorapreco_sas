@@ -137,12 +137,23 @@ public class MercadoLivreService {
      * Gera a URL para o usuário autorizar o app.
      */
     public String getAuthorizationUrl() {
-        return UriComponentsBuilder.fromHttpUrl("https://auth.mercadolivre.com.br/authorization")
+        return getAuthorizationUrl(null);
+    }
+    
+    /**
+     * Gera a URL para o usuário autorizar o app com state parameter.
+     */
+    public String getAuthorizationUrl(String state) {
+        var builder = UriComponentsBuilder.fromHttpUrl("https://auth.mercadolivre.com.br/authorization")
                 .queryParam("response_type", "code")
                 .queryParam("client_id", clientId)
-                .queryParam("redirect_uri", redirectUri)
-                .build()
-                .toUriString();
+                .queryParam("redirect_uri", redirectUri);
+        
+        if (state != null && !state.isEmpty()) {
+            builder.queryParam("state", state);
+        }
+        
+        return builder.build().toUriString();
     }
 
     /**
