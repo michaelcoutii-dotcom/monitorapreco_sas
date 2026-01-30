@@ -121,9 +121,20 @@ class Scraper:
                 "--disable-dev-shm-usage",
                 "--no-first-run",
                 "--no-default-browser-check",
+                # Memory optimization flags
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+                "--disable-extensions",
+                "--disable-background-networking",
+                "--disable-sync",
+                "--disable-translate",
+                "--metrics-recording-only",
+                "--no-sandbox",
+                "--single-process",
+                "--js-flags=--max-old-space-size=128",
             ]
         )
-        print("[INFO] Persistent browser instance launched.", flush=True)
+        print("[INFO] Persistent browser instance launched (low memory mode).", flush=True)
 
     @classmethod
     async def close(cls):
@@ -170,8 +181,10 @@ class Scraper:
         Internal method that performs a single scraping attempt.
         Includes human-like delays and captcha detection.
         """
+        # Lazy initialization - só inicializa quando realmente precisa
         if not cls.is_initialized():
-            raise RuntimeError("Scraper is not initialized. Call Scraper.initialize() first.")
+            print("[INFO] 🚀 Inicializando Playwright sob demanda (lazy loading)...", flush=True)
+            await cls.initialize()
 
         context = None
         try:

@@ -55,21 +55,31 @@ except ImportError:
 # Application Lifecycle (Lifespan)
 # ========================================
 
+# Flag para controlar se Playwright deve ser inicializado
+# Por padrão, NÃO inicializa para economizar memória (ML API é prioridade)
+INIT_PLAYWRIGHT_ON_STARTUP = os.getenv("INIT_PLAYWRIGHT_ON_STARTUP", "false").lower() == "true"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Handles startup and shutdown events for the FastAPI application.
     """
     print("[INFO] Application startup...", flush=True)
+    print(f"[INFO] ML API available: {ML_API_AVAILABLE}", flush=True)
+    print(f"[INFO] ScraperAPI available: {SCRAPERAPI_AVAILABLE}", flush=True)
+    print(f"[INFO] Playwright available: {SCRAPER_AVAILABLE}", flush=True)
     
-    # Inicializar scraper
-    if SCRAPER_AVAILABLE:
+    # Só inicializa Playwright no startup se explicitamente habilitado
+    # Isso economiza ~500MB de RAM no Railway
+    if SCRAPER_AVAILABLE and INIT_PLAYWRIGHT_ON_STARTUP:
         print("[INFO] Inicializando scraper Playwright...", flush=True)
         try:
             await Scraper.initialize()
             print("[INFO] ✅ Scraper inicializado com sucesso!", flush=True)
         except Exception as e:
             print(f"[WARN] ⚠️ Falha ao inicializar scraper: {e}", flush=True)
+    else:
+        print("[INFO] ⏭️ Playwright será inicializado sob demanda (economia de memória)", flush=True)
     
     yield  # The application is now running
     
